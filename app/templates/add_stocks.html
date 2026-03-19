@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Step 2 · Add Stocks{% endblock %}
+{% block content %}
+<div class="progress-bar">
+  <div class="step done">1 · Target allocation ✓</div>
+  <div class="step active">2 · Add stocks</div>
+  <div class="step">3 · Results</div>
+</div>
+<div class="back-bar">
+  <a href="/session/{{ session_id }}/targets" class="btn btn--secondary btn--sm">← Edit target allocation</a>
+</div>
+<div class="card">
+  <h2>Step 2 — Enter your stock holdings</h2>
+  <p class="hint">Add each stock you own. Enter the name, how many shares you hold, and which sector it belongs to.</p>
+  <form action="" method="POST" id="stock-form">
+    <div class="stock-input-grid">
+      <div class="field">
+        <label for="name">Stock name</label>
+        <input type="text" id="name" name="name" placeholder="e.g. Infosys, TCS, HDFC Bank" required />
+      </div>
+      <div class="field">
+        <label for="quantity">Quantity (no. of shares)</label>
+        <input type="number" id="quantity" name="quantity" placeholder="e.g. 50" min="0.001" step="any" required />
+      </div>
+      <div class="field">
+        <label for="sector">Sector</label>
+        <select id="sector" name="sector" required>
+          <option value="">— Select sector —</option>
+          {% for s in sectors %}
+            <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">+ Add stock</button>
+    </div>
+  </form>
+</div>
+{% if stocks %}
+<div class="card" style="margin-top: 24px;">
+  <h3>Stocks added so far ({{ stocks|length }})</h3>
+  <table class="data-table">
+    <thead><tr><th>#</th><th>Stock name</th><th>Quantity</th><th>Sector</th><th>Remove</th></tr></thead>
+    <tbody>
+      {% for stock in stocks %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td><strong>{{ stock.name }}</strong></td>
+        <td>{{ stock.quantity }}</td>
+        <td><span class="sector-tag">{{ stock.sector }}</span></td>
+        <td>
+          <form action="/session/{{ session_id }}/stocks/{{ stock.id }}/delete" method="POST" style="display:inline;">
+            <button type="submit" class="btn-remove-sm" onclick="return confirm('Remove {{ stock.name }}?')">✕</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="form-actions" style="margin-top: 24px;">
+    <a href="/session/{{ session_id }}/analyze" class="btn btn--primary btn--large">Run analysis →</a>
+    <p class="hint" style="margin-top: 8px;">Added all your stocks? Click above to see your exposure report.</p>
+  </div>
+</div>
+{% else %}
+<p class="hint" style="text-align:center; margin-top: 24px;">No stocks added yet. Use the form above to add your first holding.</p>
+{% endif %}
+{% endblock %}

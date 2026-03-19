@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Results · Portfolio Analysis{% endblock %}
+{% block content %}
+<div class="progress-bar">
+  <div class="step done">1 · Target allocation ✓</div>
+  <div class="step done">2 · Add stocks ✓</div>
+  <div class="step active">3 · Results</div>
+</div>
+<div class="card">
+  <h2>Your portfolio exposure report</h2>
+  <p class="hint">This shows how your actual holdings compare to your target allocation. Sectors within ±5% of target are considered on-track.</p>
+  <div class="results-grid">
+    {% for row in analysis %}
+    <div class="result-card result-card--{{ row.status }}">
+      <div class="result-sector">{{ row.sector }}</div>
+      <div class="bar-group">
+        <div class="bar-label">Target</div>
+        <div class="bar-track"><div class="bar bar--target" style="width: {{ row.target_pct }}%"></div></div>
+        <div class="bar-value">{{ "%.1f"|format(row.target_pct) }}%</div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label">Actual</div>
+        <div class="bar-track"><div class="bar bar--actual" style="width: {{ [row.actual_pct, 100]|min }}%"></div></div>
+        <div class="bar-value">{{ "%.1f"|format(row.actual_pct) }}%</div>
+      </div>
+      <div class="result-footer">
+        {% if row.status == "overweight" %}
+          <span class="badge badge--danger">▲ Overweight by {{ "%.1f"|format(row.gap_pct) }}%</span>
+        {% elif row.status == "underweight" %}
+          <span class="badge badge--warning">▼ Underweight by {{ "%.1f"|format(row.gap_pct|abs) }}%</span>
+        {% else %}
+          <span class="badge badge--success">✓ On target</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="summary-box">
+    <h3>Summary</h3>
+    <ul>
+      {% for row in analysis %}
+        {% if row.status == "overweight" %}
+          <li>🔴 <strong>{{ row.sector }}</strong> — You are {{ "%.1f"|format(row.gap_pct) }}% overexposed. Consider reducing holdings here.</li>
+        {% elif row.status == "underweight" %}
+          <li>🟡 <strong>{{ row.sector }}</strong> — You are {{ "%.1f"|format(row.gap_pct|abs) }}% underexposed. Consider adding more here.</li>
+        {% else %}
+          <li>🟢 <strong>{{ row.sector }}</strong> — Well balanced, within ±5% of your target.</li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+<div class="card" style="margin-top: 24px;">
+  <h3>All holdings in this session</h3>
+  <table class="data-table">
+    <thead><tr><th>Stock</th><th>Quantity</th><th>Sector</th></tr></thead>
+    <tbody>
+      {% for stock in stocks %}
+      <tr>
+        <td><strong>{{ stock.name }}</strong></td>
+        <td>{{ stock.quantity }}</td>
+        <td><span class="sector-tag">{{ stock.sector }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="card" style="margin-top: 24px;">
+  <h3>Visual comparison</h3>
+  <canvas id="comparisonChart" height="100"></canvas>
+</div>
+<div class="form-actions" style="margin-top: 24px; text-align:center; justify-content:center;">
+  <button onclick="downloadPDF()" class="btn btn--primary btn--large">⬇ Download PDF report</button>
+  <a href="/session/{{ session_id }}/targets" class="btn btn--secondary">← Edit target allocation</a>
+  <a href="/new-session" class="btn btn--secondary">Start new analysis</a>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+var labels  = {{ analysis | map(attribute='sector')     | list | tojson }};
+var actuals = {{ analysis | map(attribute='actual_pct') | list | tojson }};
+var targets = {{ analysis | map(attribute='target_pct') | list | tojson }};
+var ctx = document.getElementById("comparisonChart").getContext("2d");
+new Chart(ctx, {
+  type: "bar",
+  data: {
+    labels: labels,
+    datasets: [
+      { label: "Target %", data: targets, backgroundColor: "rgba(67,97,238,0.25)", borderColor: "rgba(67,97,238,0.9)", borderWidth: 2 },
+      { label: "Actual %", data: actuals, backgroundColor: "rgba(42,157,92,0.25)", borderColor: "rgba(42,157,92,0.9)", borderWidth: 2 }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: "top" } },
+    scales: { y: { beginAtZero: true, max: 100, ticks: { callback: function(val) { return val + "%"; } } } }
+  }
+});
+
+function downloadPDF() {
+  var printContents = document.querySelector("main").innerHTML;
+  var originalContents = document.body.innerHTML;
+  document.body.innerHTML = '<div style="padding:32px; font-family: Arial, sans-serif;">' + printContents + '</div>';
+  window.print();
+  document.body.innerHTML = originalContents;
+  window.location.reload();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Home · Stock Portfolio Diversification{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Know exactly where your money is</h1>
+  <p class="subtitle">Enter your name, set your target sector allocation, add your holdings, and get a full exposure report with PDF download.</p>
+  <div class="username-card">
+    <form action="/new-session" method="GET" id="start-form">
+      <div class="username-row">
+        <div class="field">
+          <label for="username">Your name</label>
+          <input type="text" id="username" name="username" placeholder="e.g. Rahul Sharma" required autocomplete="off"/>
+        </div>
+        <button type="submit" class="btn btn--primary btn--large">Start analysis →</button>
+      </div>
+    </form>
+  </div>
+</section>
+<section class="how-it-works">
+  <div class="step-card">
+    <span class="step-num">1</span>
+    <h3>Set your target split</h3>
+    <p>Enter how much % of your portfolio you want in each sector. Must add up to 100%.</p>
+  </div>
+  <div class="step-card">
+    <span class="step-num">2</span>
+    <h3>Add your holdings</h3>
+    <p>Enter each stock you own — its name, how many shares you hold, and which sector it belongs to.</p>
+  </div>
+  <div class="step-card">
+    <span class="step-num">3</span>
+    <h3>Download your report</h3>
+    <p>Get a full exposure analysis showing where you are over or underweight, and download it as a PDF.</p>
+  </div>
+</section>
+{% endblock %}

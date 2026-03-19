@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Past Sessions{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Past analysis sessions</h2>
+  {% if sessions %}
+  <table class="data-table">
+    <thead><tr><th>Session #</th><th>Date</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for s in sessions %}
+      <tr>
+        <td>{{ s.id }}</td>
+        <td>{{ s.created_at[:16] }}</td>
+        <td>
+          <a href="/session/{{ s.id }}/results" class="btn btn--secondary" style="padding:6px 14px;font-size:13px;">View results</a>
+          <a href="/session/{{ s.id }}/stocks" class="btn btn--secondary" style="padding:6px 14px;font-size:13px;margin-left:6px;">Edit stocks</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="hint">No sessions yet. <a href="/new-session">Start your first analysis →</a></p>
+  {% endif %}
+  <div class="form-actions" style="margin-top:24px;">
+    <a href="/new-session" class="btn btn--primary">+ New analysis</a>
+  </div>
+</div>
+{% endblock %}
