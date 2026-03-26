@@ -62,27 +62,34 @@ def add_stocks(session_id):
     targets = get_target_allocations(db(), session_id)
     sectors = [t["sector"] for t in targets]
     if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        quantity = request.form.get("quantity", "").strip()
-        sector = request.form.get("sector", "").strip()
+        name      = request.form.get("name", "").strip()
+        quantity  = request.form.get("quantity", "").strip()
+        buy_price = request.form.get("buy_price", "").strip()
+        sector    = request.form.get("sector", "").strip()
         error = None
         if not name:
             error = "Please enter the stock name."
         elif not quantity:
             error = "Please enter the quantity."
+        elif not buy_price:
+            error = "Please enter the buy price."
         elif not sector:
             error = "Please select a sector."
         else:
             try:
-                qty_val = float(quantity)
+                qty_val   = float(quantity)
+                price_val = float(buy_price)
                 if qty_val <= 0:
                     error = "Quantity must be greater than 0."
+                elif price_val <= 0:
+                    error = "Buy price must be greater than 0."
             except ValueError:
-                error = "Quantity must be a number."
+                error = "Quantity and price must be numbers."
         if error:
             flash(error, "danger")
         else:
-            add_stock(db(), session_id, name=name, quantity=float(quantity), sector=sector)
+            add_stock(db(), session_id, name=name, quantity=float(quantity),
+                      buy_price=float(buy_price), sector=sector)
             flash(f"'{name}' added successfully!", "success")
         return redirect(url_for("main.add_stocks", session_id=session_id))
     stocks = get_stocks(db(), session_id)
