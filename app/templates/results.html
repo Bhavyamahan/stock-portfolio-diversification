@@ -68,8 +68,8 @@
       <tr>
         <td><strong>{{ stock.name }}</strong></td>
         <td>{{ stock.quantity }}</td>
-        <td>₹{{ stock.buy_price }}</td>
-        <td><strong>₹{{ "{:,.0f}".format(stock.quantity * stock.buy_price) }}</strong></td>
+        <td>Rs.{{ stock.buy_price }}</td>
+        <td><strong>Rs.{{ "{:,.0f}".format(stock.quantity * stock.buy_price) }}</strong></td>
         <td><span class="sector-tag">{{ stock.sector }}</span></td>
       </tr>
       {% endfor %}
@@ -78,16 +78,23 @@
 </div>
 
 <div class="card" style="margin-top: 24px;">
-  <h3>Visual comparison</h3>
+  <h3>Target vs actual comparison</h3>
   <canvas id="comparisonChart" height="100"></canvas>
 </div>
 
-<div class="form-actions" style="margin-top: 24px; text-align:center; justify-content:center;">
-  <button onclick="downloadPDF()" class="btn btn--primary btn--large">⬇ Download PDF report</button>
-  <a href="/session/{{ session_id }}/targets" class="btn btn--secondary">← Edit target allocation</a>
-  <a href="/new-session" class="btn btn--secondary">Start new analysis</a>
+<div class="card" style="margin-top: 24px;">
+  <h3>Portfolio composition by value</h3>
+  <p class="hint">Shows how your actual portfolio is split by total invested value (quantity x buy price).</p>
+  <div class="pie-chart-wrapper">
+    <canvas id="pieChart"></canvas>
+  </div>
 </div>
 
+<div class="form-actions" style="margin-top: 24px; text-align:center; justify-content:center;">
+  <button onclick="downloadPDF()" class="btn btn--primary btn--large">Download PDF report</button>
+  <a href="/session/{{ session_id }}/targets" class="btn btn--secondary">Edit target allocation</a>
+  <a href="/new-session" class="btn btn--secondary">Start new analysis</a>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -96,36 +103,129 @@
 var labels  = {{ analysis | map(attribute='sector')     | list | tojson }};
 var actuals = {{ analysis | map(attribute='actual_pct') | list | tojson }};
 var targets = {{ analysis | map(attribute='target_pct') | list | tojson }};
-var ctx = document.getElementById("comparisonChart").getContext("2d");
-new Chart(ctx, {
+
+var stockData = {{ stocks | tojson }};
+var sectorValues = {};
+stockData.forEach(function(stock) {
+  var value = stock.quantity * stock.buy_price;
+  if (sectorValues[stock.sector]) {
+    sectorValues[stock.sector] += value;
+  } else {
+    sectorValues[stock.sector] = value;
+  }
+});
+
+var pieValues = labels.map(function(label) {
+  return sectorValues[label] || 0;
+});
+
+var pieColors = [
+  "rgba(47,84,235,0.8)",
+  "rgba(42,157,92,0.8)",
+  "rgba(192,57,43,0.8)",
+  "rgba(201,124,16,0.8)",
+  "rgba(142,68,173,0.8)",
+  "rgba(39,174,96,0.8)",
+  "rgba(41,128,185,0.8)",
+  "rgba(231,76,60,0.8)",
+  "rgba(243,156,18,0.8)",
+  "rgba(26,188,156,0.8)",
+];
+
+var barCtx = document.getElementById("comparisonChart").getContext("2d");
+new Chart(barCtx, {
   type: "bar",
   data: {
     labels: labels,
     datasets: [
-      { label: "Target %", data: targets, backgroundColor: "rgba(47,84,235,0.25)", borderColor: "rgba(47,84,235,0.9)", borderWidth: 2 },
-      { label: "Actual %", data: actuals, backgroundColor: "rgba(42,157,92,0.25)", borderColor: "rgba(42,157,92,0.9)", borderWidth: 2 }
+      {
+        label: "Target %",
+        data: targets,
+        backgroundColor: "rgba(47,84,235,0.25)",
+        borderColor: "rgba(47,84,235,0.9)",
+        borderWidth: 2
+      },
+      {
+        label: "Actual %",
+        data: actuals,
+        backgroundColor: "rgba(42,157,92,0.25)",
+        borderColor: "rgba(42,157,92,0.9)",
+        borderWidth: 2
+      }
     ]
   },
   options: {
     responsive: true,
-    plugins: { legend: { position: "top" } },
-    scales: { y: { beginAtZero: true, max: 100, ticks: { callback: function(val) { return val + "%"; } } } }
+    plugins: {
+      legend: { position: "top" },
+      tooltip: {
+        callbacks: {
+          label: function(ctx) {
+            return ctx.dataset.label + ": " + ctx.parsed.y.toFixed(1) + "%";
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+        ticks: { callback: function(val) { return val + "%"; } }
+      }
+    }
+  }
+});
+
+var pieCtx = document.getElementById("pieChart").getContext("2d");
+new Chart(pieCtx, {
+  type: "pie",
+  data: {
+    labels: labels,
+    datasets: [{
+      data: pieValues,
+      backgroundColor: pieColors.slice(0, labels.length),
+      borderColor: "#ffffff",
+      borderWidth: 3
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "right",
+        labels: { padding: 20, font: { size: 13 } }
+      },
+      tooltip: {
+        callbacks: {
+          label: function(ctx) {
+            var value = ctx.parsed;
+            var total = ctx.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+            var pct = ((value / total) * 100).toFixed(1);
+            var formatted = "Rs." + value.toLocaleString("en-IN", {maximumFractionDigits: 0});
+            return ctx.label + ": " + formatted + " (" + pct + "%)";
+          }
+        }
+      }
+    }
   }
 });
 
 function downloadPDF() {
-  var canvas = document.getElementById("comparisonChart");
-  var chartImage = canvas.toDataURL("image/png");
-  var imgElement = document.createElement("img");
-  imgElement.src = chartImage;
-  imgElement.style.width = "100%";
-  imgElement.style.maxHeight = "400px";
-  canvas.parentNode.replaceChild(imgElement, canvas);
+  var barCanvas = document.getElementById("comparisonChart");
+  var pieCanvas = document.getElementById("pieChart");
+  var barImage = barCanvas.toDataURL("image/png");
+  var pieImage = pieCanvas.toDataURL("image/png");
+  var barImg = document.createElement("img");
+  barImg.src = barImage;
+  barImg.style.width = "100%";
+  barCanvas.parentNode.replaceChild(barImg, barCanvas);
+  var pieImg = document.createElement("img");
+  pieImg.src = pieImage;
+  pieImg.style.width = "100%";
+  pieCanvas.parentNode.replaceChild(pieImg, pieCanvas);
   setTimeout(function() {
     window.print();
-    setTimeout(function() {
-      window.location.reload();
-    }, 1000);
+    setTimeout(function() { window.location.reload(); }, 1000);
   }, 500);
 }
 </script>
