@@ -99,12 +99,27 @@ new Chart(ctx, {
 });
 
 function downloadPDF() {
-  var printContents = document.querySelector("main").innerHTML;
-  var originalContents = document.body.innerHTML;
-  document.body.innerHTML = '<div style="padding:32px; font-family: Arial, sans-serif;">' + printContents + '</div>';
-  window.print();
-  document.body.innerHTML = originalContents;
-  window.location.reload();
+  // Wait for chart to fully render before printing
+  var canvas = document.getElementById("comparisonChart");
+  
+  // Convert the chart canvas to a static image first
+  var chartImage = canvas.toDataURL("image/png");
+  
+  // Replace the canvas with a static image so it shows in PDF
+  var imgElement = document.createElement("img");
+  imgElement.src = chartImage;
+  imgElement.style.width = "100%";
+  imgElement.style.maxHeight = "400px";
+  canvas.parentNode.replaceChild(imgElement, canvas);
+  
+  // Small delay to make sure everything is ready
+  setTimeout(function() {
+    window.print();
+    // Reload page after printing to restore the interactive chart
+    setTimeout(function() {
+      window.location.reload();
+    }, 1000);
+  }, 500);
 }
 </script>
 {% endblock %}
