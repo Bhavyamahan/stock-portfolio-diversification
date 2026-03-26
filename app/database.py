@@ -22,6 +22,7 @@ def init_db(db_path):
             session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
             name TEXT NOT NULL,
             quantity REAL NOT NULL,
+            buy_price REAL NOT NULL DEFAULT 0,
             sector TEXT NOT NULL,
             added_at TEXT NOT NULL DEFAULT (datetime('now')))""")
         conn.execute("""CREATE TABLE IF NOT EXISTS analysis_results (
@@ -64,11 +65,11 @@ def get_target_allocations(db_path, session_id):
         rows = conn.execute("SELECT * FROM target_allocation WHERE session_id = ? ORDER BY id", (session_id,)).fetchall()
         return [dict(r) for r in rows]
 
-def add_stock(db_path, session_id, name, quantity, sector):
+def add_stock(db_path, session_id, name, quantity, buy_price, sector):
     with get_connection(db_path) as conn:
         cur = conn.execute(
-            "INSERT INTO stocks (session_id, name, quantity, sector) VALUES (?, ?, ?, ?)",
-            (session_id, name, quantity, sector))
+            "INSERT INTO stocks (session_id, name, quantity, buy_price, sector) VALUES (?, ?, ?, ?, ?)",
+            (session_id, name, quantity, buy_price, sector))
         conn.commit()
         return cur.lastrowid
 
