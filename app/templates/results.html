@@ -50,31 +50,46 @@
     </ul>
   </div>
 </div>
+
 <div class="card" style="margin-top: 24px;">
   <h3>All holdings in this session</h3>
   <table class="data-table">
-    <thead><tr><th>Stock</th><th>Quantity</th><th>Sector</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Stock</th>
+        <th>Quantity</th>
+        <th>Buy price</th>
+        <th>Total value</th>
+        <th>Sector</th>
+      </tr>
+    </thead>
     <tbody>
       {% for stock in stocks %}
       <tr>
         <td><strong>{{ stock.name }}</strong></td>
         <td>{{ stock.quantity }}</td>
+        <td>₹{{ stock.buy_price }}</td>
+        <td><strong>₹{{ "{:,.0f}".format(stock.quantity * stock.buy_price) }}</strong></td>
         <td><span class="sector-tag">{{ stock.sector }}</span></td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
 <div class="card" style="margin-top: 24px;">
   <h3>Visual comparison</h3>
   <canvas id="comparisonChart" height="100"></canvas>
 </div>
+
 <div class="form-actions" style="margin-top: 24px; text-align:center; justify-content:center;">
   <button onclick="downloadPDF()" class="btn btn--primary btn--large">⬇ Download PDF report</button>
   <a href="/session/{{ session_id }}/targets" class="btn btn--secondary">← Edit target allocation</a>
   <a href="/new-session" class="btn btn--secondary">Start new analysis</a>
 </div>
+
 {% endblock %}
+
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
@@ -87,7 +102,7 @@ new Chart(ctx, {
   data: {
     labels: labels,
     datasets: [
-      { label: "Target %", data: targets, backgroundColor: "rgba(67,97,238,0.25)", borderColor: "rgba(67,97,238,0.9)", borderWidth: 2 },
+      { label: "Target %", data: targets, backgroundColor: "rgba(47,84,235,0.25)", borderColor: "rgba(47,84,235,0.9)", borderWidth: 2 },
       { label: "Actual %", data: actuals, backgroundColor: "rgba(42,157,92,0.25)", borderColor: "rgba(42,157,92,0.9)", borderWidth: 2 }
     ]
   },
@@ -99,23 +114,15 @@ new Chart(ctx, {
 });
 
 function downloadPDF() {
-  // Wait for chart to fully render before printing
   var canvas = document.getElementById("comparisonChart");
-  
-  // Convert the chart canvas to a static image first
   var chartImage = canvas.toDataURL("image/png");
-  
-  // Replace the canvas with a static image so it shows in PDF
   var imgElement = document.createElement("img");
   imgElement.src = chartImage;
   imgElement.style.width = "100%";
   imgElement.style.maxHeight = "400px";
   canvas.parentNode.replaceChild(imgElement, canvas);
-  
-  // Small delay to make sure everything is ready
   setTimeout(function() {
     window.print();
-    // Reload page after printing to restore the interactive chart
     setTimeout(function() {
       window.location.reload();
     }, 1000);
