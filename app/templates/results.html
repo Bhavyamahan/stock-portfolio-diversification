@@ -114,6 +114,51 @@
   </div>
 </div>
 
+{% if rebalancing %}
+<div class="card" style="margin-top: 24px;">
+  <h3>Smart rebalancing — exact shares to buy/sell</h3>
+  <p class="hint">Based on live market prices fetched from Yahoo Finance.</p>
+  {% for item in rebalancing %}
+  <div class="rebalance-sector-block">
+    <div class="rebalance-sector-title">
+      {{ item.sector }}
+      {% if item.action == "Reduce" %}
+        <span class="action-badge action-badge--sell">Reduce exposure</span>
+      {% else %}
+        <span class="action-badge action-badge--buy">Increase exposure</span>
+      {% endif %}
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Stock</th>
+          <th>Live price</th>
+          <th>Amount to {{ item.action | lower }}</th>
+          <th>Shares to {{ item.action | lower }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in item.suggestions %}
+        <tr>
+          <td><strong>{{ s.stock }}</strong></td>
+          <td>Rs.{{ "{:,.2f}".format(s.current_price) }}</td>
+          <td>Rs.{{ "{:,.0f}".format(s.amount) }}</td>
+          <td>
+            {% if item.action == "Reduce" %}
+              <span class="action-badge action-badge--sell">Sell {{ s.shares }} shares</span>
+            {% else %}
+              <span class="action-badge action-badge--buy">Buy {{ s.shares }} shares</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <div class="card" style="margin-top: 24px;">
   <h3>Plain English summary</h3>
   <ul class="summary-list">
@@ -187,7 +232,6 @@
 var labels  = {{ analysis | map(attribute='sector')     | list | tojson }};
 var actuals = {{ analysis | map(attribute='actual_pct') | list | tojson }};
 var targets = {{ analysis | map(attribute='target_pct') | list | tojson }};
-
 var stockData = {{ stocks | tojson }};
 var sectorValues = {};
 stockData.forEach(function(stock) {
@@ -198,102 +242,53 @@ stockData.forEach(function(stock) {
     sectorValues[stock.sector] = value;
   }
 });
-
-var pieValues = labels.map(function(label) {
-  return sectorValues[label] || 0;
-});
-
+var pieValues = labels.map(function(label) { return sectorValues[label] || 0; });
 var pieColors = [
-  "rgba(47,84,235,0.85)",
-  "rgba(42,157,92,0.85)",
-  "rgba(192,57,43,0.85)",
-  "rgba(201,124,16,0.85)",
-  "rgba(142,68,173,0.85)",
-  "rgba(39,174,96,0.85)",
-  "rgba(41,128,185,0.85)",
-  "rgba(231,76,60,0.85)",
-  "rgba(243,156,18,0.85)",
+  "rgba(47,84,235,0.85)","rgba(42,157,92,0.85)","rgba(192,57,43,0.85)",
+  "rgba(201,124,16,0.85)","rgba(142,68,173,0.85)","rgba(39,174,96,0.85)",
+  "rgba(41,128,185,0.85)","rgba(231,76,60,0.85)","rgba(243,156,18,0.85)",
   "rgba(26,188,156,0.85)",
 ];
-
 var barCtx = document.getElementById("comparisonChart").getContext("2d");
 new Chart(barCtx, {
   type: "bar",
   data: {
     labels: labels,
     datasets: [
-      {
-        label: "Target %",
-        data: targets,
-        backgroundColor: "rgba(47,84,235,0.25)",
-        borderColor: "rgba(47,84,235,0.9)",
-        borderWidth: 2
-      },
-      {
-        label: "Actual %",
-        data: actuals,
-        backgroundColor: "rgba(42,157,92,0.25)",
-        borderColor: "rgba(42,157,92,0.9)",
-        borderWidth: 2
-      }
+      { label: "Target %", data: targets, backgroundColor: "rgba(47,84,235,0.25)", borderColor: "rgba(47,84,235,0.9)", borderWidth: 2 },
+      { label: "Actual %", data: actuals, backgroundColor: "rgba(42,157,92,0.25)", borderColor: "rgba(42,157,92,0.9)", borderWidth: 2 }
     ]
   },
   options: {
     responsive: true,
-    plugins: {
-      legend: { position: "top" },
-      tooltip: {
-        callbacks: {
-          label: function(ctx) {
-            return ctx.dataset.label + ": " + ctx.parsed.y.toFixed(1) + "%";
-          }
-        }
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        max: 100,
-        ticks: { callback: function(val) { return val + "%"; } }
-      }
-    }
+    plugins: { legend: { position: "top" } },
+    scales: { y: { beginAtZero: true, max: 100, ticks: { callback: function(val) { return val + "%"; } } } }
   }
 });
-
 var pieCtx = document.getElementById("pieChart").getContext("2d");
 new Chart(pieCtx, {
   type: "pie",
   data: {
     labels: labels,
-    datasets: [{
-      data: pieValues,
-      backgroundColor: pieColors.slice(0, labels.length),
-      borderColor: "#ffffff",
-      borderWidth: 3
-    }]
+    datasets: [{ data: pieValues, backgroundColor: pieColors.slice(0, labels.length), borderColor: "#ffffff", borderWidth: 3 }]
   },
   options: {
     responsive: true,
     plugins: {
-      legend: {
-        position: "right",
-        labels: { padding: 20, font: { size: 13 } }
-      },
+      legend: { position: "right", labels: { padding: 20, font: { size: 13 } } },
       tooltip: {
         callbacks: {
           label: function(ctx) {
             var value = ctx.parsed;
             var total = ctx.dataset.data.reduce(function(a, b) { return a + b; }, 0);
             var pct = ((value / total) * 100).toFixed(1);
-            var formatted = "Rs." + value.toLocaleString("en-IN", {maximumFractionDigits: 0});
-            return ctx.label + ": " + formatted + " (" + pct + "%)";
+            return ctx.label + ": Rs." + value.toLocaleString("en-IN", {maximumFractionDigits: 0}) + " (" + pct + "%)";
           }
         }
       }
     }
   }
 });
-
 function downloadPDF() {
   var barCanvas = document.getElementById("comparisonChart");
   var pieCanvas = document.getElementById("pieChart");
