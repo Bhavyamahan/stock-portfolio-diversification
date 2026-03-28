@@ -3,8 +3,20 @@ def create_user(db_url, db_type, name, email, password_hash):
     try:
         cur = conn.cursor()
         p = ph(db_type)
-        if db_type == "postgres":
-            cur.execute(
+      if db_type == "postgres":
+            cur.execute("""CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW())""")
+        else:
+            cur.execute("""CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')))""")
                 f"INSERT INTO users (name, email, password_hash) VALUES ({p},{p},{p}) RETURNING id",
                 (name, email, password_hash))
             uid = cur.fetchone()[0]
