@@ -3,18 +3,14 @@
 {% block content %}
 <section class="hero">
   <h1>Know exactly where your money is</h1>
-  <p class="subtitle">Enter your name, set your target sector allocation, add your holdings, and get a full exposure report with PDF download.</p>
-  <div class="username-card">
-    <form action="/new-session" method="GET" id="start-form">
-      <div class="username-row">
-        <div class="field">
-          <label for="username">Your name</label>
-          <input type="text" id="username" name="username" placeholder="e.g. Rahul Sharma" required autocomplete="off"/>
-        </div>
-        <button type="submit" class="btn btn--primary btn--large">Start analysis →</button>
-      </div>
-    </form>
-  </div>
+  <p class="subtitle">Set your target sector allocation, add your holdings, and get a full exposure report with rebalancing suggestions.</p>
+  {% if session.get('user_id') %}
+    <a href="/new-session" class="btn btn--primary btn--large">Start new analysis →</a>
+    <a href="/history" class="btn btn--secondary" style="margin-left:12px;">My past sessions</a>
+  {% else %}
+    <a href="/signup" class="btn btn--primary btn--large">Get started free →</a>
+    <a href="/login" class="btn btn--secondary" style="margin-left:12px;">Log in</a>
+  {% endif %}
 </section>
 <section class="how-it-works">
   <div class="step-card">
@@ -25,12 +21,12 @@
   <div class="step-card">
     <span class="step-num">2</span>
     <h3>Add your holdings</h3>
-    <p>Enter each stock you own — its name, how many shares you hold, and which sector it belongs to.</p>
+    <p>Enter each stock — name, quantity, buy price, and sector.</p>
   </div>
   <div class="step-card">
     <span class="step-num">3</span>
-    <h3>Download your report</h3>
-    <p>Get a full exposure analysis showing where you are over or underweight, and download it as a PDF.</p>
+    <h3>Get your report</h3>
+    <p>See exactly where you are overweight or underweight with rebalancing suggestions in rupees.</p>
   </div>
 </section>
 {% endblock %}
