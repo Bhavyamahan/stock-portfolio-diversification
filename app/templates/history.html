@@ -1,16 +1,22 @@
 {% extends "base.html" %}
-{% block title %}Past Sessions{% endblock %}
+{% block title %}My Sessions · Stock Portfolio Diversification{% endblock %}
 {% block content %}
 <div class="card">
-  <h2>Past analysis sessions</h2>
+  <h2>My past analysis sessions</h2>
   {% if sessions %}
   <table class="data-table">
-    <thead><tr><th>Session #</th><th>Date</th><th>Actions</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Session #</th>
+        <th>Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
     <tbody>
       {% for s in sessions %}
       <tr>
         <td>{{ s.id }}</td>
-        <td>{{ s.created_at[:16] }}</td>
+        <td>{{ s.created_at | string | truncate(16, True, '') }}</td>
         <td>
           <a href="/session/{{ s.id }}/results" class="btn btn--secondary" style="padding:6px 14px;font-size:13px;">View results</a>
           <a href="/session/{{ s.id }}/stocks" class="btn btn--secondary" style="padding:6px 14px;font-size:13px;margin-left:6px;">Edit stocks</a>
