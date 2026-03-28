@@ -7,10 +7,10 @@ from .analysis import run_analysis
 
 main = Blueprint("main", __name__)
 
-def db_url():
+def dbu():
     return current_app.config["DATABASE_URL"]
 
-def db_type():
+def dbt():
     return current_app.config["DB_TYPE"]
 
 @main.route("/")
@@ -20,14 +20,14 @@ def index():
 @main.route("/new-session")
 def new_session():
     username = request.args.get("username", "User").strip() or "User"
-    sid = create_session(db_url(), db_type(), label=username)
+    sid = create_session(dbu(), dbt(), label=username)
     session["session_id"] = sid
     session["username"] = username
     return redirect(url_for("main.target_allocation", session_id=sid))
 
 @main.route("/session/<int:session_id>/targets", methods=["GET", "POST"])
 def target_allocation(session_id):
-    existing = get_target_allocations(db_url(), db_type(), session_id)
+    existing = get_target_allocations(dbu(), dbt(), session_id)
     if request.method == "POST":
         sectors = request.form.getlist("sector")
         percentages = request.form.getlist("pct")
@@ -55,14 +55,14 @@ def target_allocation(session_id):
         if error:
             flash(error, "danger")
             return render_template("target_allocation.html", session_id=session_id, existing=existing)
-        save_target_allocations(db_url(), db_type(), session_id, allocations)
+        save_target_allocations(dbu(), dbt(), session_id, allocations)
         flash("Target allocations saved!", "success")
         return redirect(url_for("main.add_stocks", session_id=session_id))
     return render_template("target_allocation.html", session_id=session_id, existing=existing)
 
 @main.route("/session/<int:session_id>/stocks", methods=["GET", "POST"])
 def add_stocks(session_id):
-    targets = get_target_allocations(db_url(), db_type(), session_id)
+    targets = get_target_allocations(dbu(), dbt(), session_id)
     sectors = [t["sector"] for t in targets]
     if request.method == "POST":
         name = request.form.get("name", "").strip()
@@ -91,37 +91,37 @@ def add_stocks(session_id):
         if error:
             flash(error, "danger")
         else:
-            add_stock(db_url(), db_type(), session_id,
+            add_stock(dbu(), dbt(), session_id,
                       name=name, quantity=float(quantity),
                       buy_price=float(buy_price), sector=sector)
             flash(f"'{name}' added successfully!", "success")
         return redirect(url_for("main.add_stocks", session_id=session_id))
-    stocks = get_stocks(db_url(), db_type(), session_id)
+    stocks = get_stocks(dbu(), dbt(), session_id)
     return render_template("add_stocks.html", session_id=session_id,
                            sectors=sectors, stocks=stocks)
 
 @main.route("/session/<int:session_id>/stocks/<int:stock_id>/delete", methods=["POST"])
 def remove_stock(session_id, stock_id):
-    delete_stock(db_url(), db_type(), stock_id)
+    delete_stock(dbu(), dbt(), stock_id)
     flash("Stock removed.", "warning")
     return redirect(url_for("main.add_stocks", session_id=session_id))
 
 @main.route("/session/<int:session_id>/analyze")
 def analyze(session_id):
-    stocks = get_stocks(db_url(), db_type(), session_id)
-    targets = get_target_allocations(db_url(), db_type(), session_id)
+    stocks = get_stocks(dbu(), dbt(), session_id)
+    targets = get_target_allocations(dbu(), dbt(), session_id)
     if not stocks:
         flash("Please add at least one stock before analyzing.", "danger")
         return redirect(url_for("main.add_stocks", session_id=session_id))
     results = run_analysis(stocks, targets)
-    save_analysis_results(db_url(), db_type(), session_id, results)
+    save_analysis_results(dbu(), dbt(), session_id, results)
     return redirect(url_for("main.results", session_id=session_id))
 
 @main.route("/session/<int:session_id>/results")
 def results(session_id):
-    analysis = get_analysis_results(db_url(), db_type(), session_id)
-    stocks = get_stocks(db_url(), db_type(), session_id)
-    sess = get_session(db_url(), db_type(), session_id)
+    analysis = get_analysis_results(dbu(), dbt(), session_id)
+    stocks = get_stocks(dbu(), dbt(), session_id)
+    sess = get_session(dbu(), dbt(), session_id)
     if not analysis:
         flash("No results found. Please run the analysis first.", "danger")
         return redirect(url_for("main.add_stocks", session_id=session_id))
@@ -150,5 +150,5 @@ def results(session_id):
 
 @main.route("/history")
 def history():
-    sessions = get_all_sessions(db_url(), db_type())
+    sessions = get_all_sessions(dbu(), dbt())
     return render_template("history.html", sessions=sessions)
