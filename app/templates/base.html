@@ -11,8 +11,15 @@
     <div class="header-inner">
       <a href="/" class="logo">Stock Portfolio Diversification</a>
       <nav>
-        <a href="/">Home</a>
-        <a href="/history">Past Sessions</a>
+        {% if session.get('user_id') %}
+          <span class="nav-username">Hi, {{ session.get('username') }}</span>
+          <a href="/">Home</a>
+          <a href="/history">My Sessions</a>
+          <a href="/logout" class="btn btn--logout">Log out</a>
+        {% else %}
+          <a href="/login">Log in</a>
+          <a href="/signup" class="btn btn--signup">Sign up</a>
+        {% endif %}
       </nav>
     </div>
   </header>
@@ -25,7 +32,7 @@
     {% block content %}{% endblock %}
   </main>
   <footer>
-    <p>Stock Portfolio Diversification Analyzer · Built with Python &amp; Flask</p>
+    <p>Stock Portfolio Diversification Analyzer · Built with Python & Flask</p>
   </footer>
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   {% block scripts %}{% endblock %}
