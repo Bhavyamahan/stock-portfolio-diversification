@@ -19,14 +19,14 @@ def new_session():
     username = request.args.get("username", "User").strip() or "User"
     sid = create_session(db(), label=username)
     session["session_id"] = sid
-    session["username"] = username
+    session["username"]   = username
     return redirect(url_for("main.target_allocation", session_id=sid))
 
 @main.route("/session/<int:session_id>/targets", methods=["GET", "POST"])
 def target_allocation(session_id):
     existing = get_target_allocations(db(), session_id)
     if request.method == "POST":
-        sectors = request.form.getlist("sector")
+        sectors     = request.form.getlist("sector")
         percentages = request.form.getlist("pct")
         allocations = []
         total = 0.0
@@ -88,12 +88,15 @@ def add_stocks(session_id):
         if error:
             flash(error, "danger")
         else:
-            add_stock(db(), session_id, name=name, quantity=float(quantity),
-                      buy_price=float(buy_price), sector=sector)
+            add_stock(db(), session_id, name=name,
+                      quantity=float(quantity),
+                      buy_price=float(buy_price),
+                      sector=sector)
             flash(f"'{name}' added successfully!", "success")
         return redirect(url_for("main.add_stocks", session_id=session_id))
     stocks = get_stocks(db(), session_id)
-    return render_template("add_stocks.html", session_id=session_id, sectors=sectors, stocks=stocks)
+    return render_template("add_stocks.html", session_id=session_id,
+                           sectors=sectors, stocks=stocks)
 
 @main.route("/session/<int:session_id>/stocks/<int:stock_id>/delete", methods=["POST"])
 def remove_stock(session_id, stock_id):
@@ -103,24 +106,33 @@ def remove_stock(session_id, stock_id):
 
 @main.route("/session/<int:session_id>/analyze")
 def analyze(session_id):
-    stocks = get_stocks(db(), session_id)
+    stocks  = get_stocks(db(), session_id)
     targets = get_target_allocations(db(), session_id)
     if not stocks:
         flash("Please add at least one stock before analyzing.", "danger")
         return redirect(url_for("main.add_stocks", session_id=session_id))
-    results = run_analysis(stocks, targets)
+    results, total_value = run_analysis(stocks, targets)
     save_analysis_results(db(), session_id, results)
     return redirect(url_for("main.results", session_id=session_id))
 
 @main.route("/session/<int:session_id>/results")
 def results(session_id):
-    analysis = get_analysis_results(db(), session_id)
-    stocks = get_stocks(db(), session_id)
-    sess = get_session(db(), session_id)
+    analysis    = get_analysis_results(db(), session_id)
+    stocks      = get_stocks(db(), session_id)
+    sess        = get_session(db(), session_id)
     if not analysis:
         flash("No results found. Please run the analysis first.", "danger")
         return redirect(url_for("main.add_stocks", session_id=session_id))
-    return render_template("results.html", session_id=session_id, analysis=analysis, stocks=stocks, sess=sess)
+
+    # Calculate total portfolio value for rebalancing table
+    total_value = sum(s["quantity"] * s.get("buy_price", 1) for s in stocks)
+
+    return render_template("results.html",
+                           session_id=session_id,
+                           analysis=analysis,
+                           stocks=stocks,
+                           sess=sess,
+                           total_value=total_value)
 
 @main.route("/history")
 def history():
