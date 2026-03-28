@@ -113,7 +113,7 @@ def analyze(session_id):
         return redirect(url_for("main.add_stocks", session_id=session_id))
 
     # run_analysis returns (results_list, total_value)
-    results, total_value = run_analysis(stocks, targets)
+    results = run_analysis(stocks, targets)
 
     # save only the results list to the database
     save_analysis_results(db(), session_id, results)
