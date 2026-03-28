@@ -7,8 +7,11 @@ from .analysis import run_analysis
 
 main = Blueprint("main", __name__)
 
-def db():
-    return current_app.config["DATABASE"]
+def db_url():
+    return current_app.config["DATABASE_URL"]
+
+def db_type():
+    return current_app.config["DB_TYPE"]
 
 @main.route("/")
 def index():
@@ -17,16 +20,16 @@ def index():
 @main.route("/new-session")
 def new_session():
     username = request.args.get("username", "User").strip() or "User"
-    sid = create_session(db(), label=username)
+    sid = create_session(db_url(), db_type(), label=username)
     session["session_id"] = sid
-    session["username"]   = username
+    session["username"] = username
     return redirect(url_for("main.target_allocation", session_id=sid))
 
 @main.route("/session/<int:session_id>/targets", methods=["GET", "POST"])
 def target_allocation(session_id):
-    existing = get_target_allocations(db(), session_id)
+    existing = get_target_allocations(db_url(), db_type(), session_id)
     if request.method == "POST":
-        sectors     = request.form.getlist("sector")
+        sectors = request.form.getlist("sector")
         percentages = request.form.getlist("pct")
         allocations = []
         total = 0.0
@@ -52,20 +55,20 @@ def target_allocation(session_id):
         if error:
             flash(error, "danger")
             return render_template("target_allocation.html", session_id=session_id, existing=existing)
-        save_target_allocations(db(), session_id, allocations)
+        save_target_allocations(db_url(), db_type(), session_id, allocations)
         flash("Target allocations saved!", "success")
         return redirect(url_for("main.add_stocks", session_id=session_id))
     return render_template("target_allocation.html", session_id=session_id, existing=existing)
 
 @main.route("/session/<int:session_id>/stocks", methods=["GET", "POST"])
 def add_stocks(session_id):
-    targets = get_target_allocations(db(), session_id)
+    targets = get_target_allocations(db_url(), db_type(), session_id)
     sectors = [t["sector"] for t in targets]
     if request.method == "POST":
-        name      = request.form.get("name", "").strip()
-        quantity  = request.form.get("quantity", "").strip()
+        name = request.form.get("name", "").strip()
+        quantity = request.form.get("quantity", "").strip()
         buy_price = request.form.get("buy_price", "").strip()
-        sector    = request.form.get("sector", "").strip()
+        sector = request.form.get("sector", "").strip()
         error = None
         if not name:
             error = "Please enter the stock name."
@@ -77,7 +80,7 @@ def add_stocks(session_id):
             error = "Please select a sector."
         else:
             try:
-                qty_val   = float(quantity)
+                qty_val = float(quantity)
                 price_val = float(buy_price)
                 if qty_val <= 0:
                     error = "Quantity must be greater than 0."
@@ -88,67 +91,56 @@ def add_stocks(session_id):
         if error:
             flash(error, "danger")
         else:
-            add_stock(db(), session_id, name=name,
-                      quantity=float(quantity),
-                      buy_price=float(buy_price),
-                      sector=sector)
+            add_stock(db_url(), db_type(), session_id,
+                      name=name, quantity=float(quantity),
+                      buy_price=float(buy_price), sector=sector)
             flash(f"'{name}' added successfully!", "success")
         return redirect(url_for("main.add_stocks", session_id=session_id))
-    stocks = get_stocks(db(), session_id)
+    stocks = get_stocks(db_url(), db_type(), session_id)
     return render_template("add_stocks.html", session_id=session_id,
                            sectors=sectors, stocks=stocks)
 
 @main.route("/session/<int:session_id>/stocks/<int:stock_id>/delete", methods=["POST"])
 def remove_stock(session_id, stock_id):
-    delete_stock(db(), stock_id)
+    delete_stock(db_url(), db_type(), stock_id)
     flash("Stock removed.", "warning")
     return redirect(url_for("main.add_stocks", session_id=session_id))
 
 @main.route("/session/<int:session_id>/analyze")
 def analyze(session_id):
-    stocks  = get_stocks(db(), session_id)
-    targets = get_target_allocations(db(), session_id)
+    stocks = get_stocks(db_url(), db_type(), session_id)
+    targets = get_target_allocations(db_url(), db_type(), session_id)
     if not stocks:
         flash("Please add at least one stock before analyzing.", "danger")
         return redirect(url_for("main.add_stocks", session_id=session_id))
-
-    # run_analysis returns (results_list, total_value)
     results = run_analysis(stocks, targets)
-
-    # save only the results list to the database
-    save_analysis_results(db(), session_id, results)
-
+    save_analysis_results(db_url(), db_type(), session_id, results)
     return redirect(url_for("main.results", session_id=session_id))
 
 @main.route("/session/<int:session_id>/results")
 def results(session_id):
-    analysis = get_analysis_results(db(), session_id)
-    stocks   = get_stocks(db(), session_id)
-    sess     = get_session(db(), session_id)
-
+    analysis = get_analysis_results(db_url(), db_type(), session_id)
+    stocks = get_stocks(db_url(), db_type(), session_id)
+    sess = get_session(db_url(), db_type(), session_id)
     if not analysis:
         flash("No results found. Please run the analysis first.", "danger")
         return redirect(url_for("main.add_stocks", session_id=session_id))
-
-    # Recalculate total portfolio value for the results page
-    total_value = sum(s["quantity"] * s.get("buy_price", 1) for s in stocks)
-
-    # Recalculate actual and target values for each sector
-    # (since analysis_results table only stores percentages)
+    total_value = sum(
+        float(s["quantity"]) * float(s["buy_price"]) for s in stocks if s["buy_price"]
+    )
     for row in analysis:
         row["actual_value"] = round((row["actual_pct"] / 100) * total_value, 2)
         row["target_value"] = round((row["target_pct"] / 100) * total_value, 2)
-        row["gap_value"]    = round(row["actual_value"] - row["target_value"], 2)
+        row["gap_value"] = round(row["actual_value"] - row["target_value"], 2)
         if row["status"] == "overweight":
-            row["action"]        = "Reduce"
+            row["action"] = "Reduce"
             row["action_amount"] = abs(row["gap_value"])
         elif row["status"] == "underweight":
-            row["action"]        = "Increase"
+            row["action"] = "Increase"
             row["action_amount"] = abs(row["gap_value"])
         else:
-            row["action"]        = "Hold"
+            row["action"] = "Hold"
             row["action_amount"] = 0
-
     return render_template("results.html",
                            session_id=session_id,
                            analysis=analysis,
@@ -158,5 +150,5 @@ def results(session_id):
 
 @main.route("/history")
 def history():
-    sessions = get_all_sessions(db())
+    sessions = get_all_sessions(db_url(), db_type())
     return render_template("history.html", sessions=sessions)
