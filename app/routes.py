@@ -111,21 +111,43 @@ def analyze(session_id):
     if not stocks:
         flash("Please add at least one stock before analyzing.", "danger")
         return redirect(url_for("main.add_stocks", session_id=session_id))
+
+    # run_analysis returns (results_list, total_value)
     results, total_value = run_analysis(stocks, targets)
+
+    # save only the results list to the database
     save_analysis_results(db(), session_id, results)
+
     return redirect(url_for("main.results", session_id=session_id))
 
 @main.route("/session/<int:session_id>/results")
 def results(session_id):
-    analysis    = get_analysis_results(db(), session_id)
-    stocks      = get_stocks(db(), session_id)
-    sess        = get_session(db(), session_id)
+    analysis = get_analysis_results(db(), session_id)
+    stocks   = get_stocks(db(), session_id)
+    sess     = get_session(db(), session_id)
+
     if not analysis:
         flash("No results found. Please run the analysis first.", "danger")
         return redirect(url_for("main.add_stocks", session_id=session_id))
 
-    # Calculate total portfolio value for rebalancing table
+    # Recalculate total portfolio value for the results page
     total_value = sum(s["quantity"] * s.get("buy_price", 1) for s in stocks)
+
+    # Recalculate actual and target values for each sector
+    # (since analysis_results table only stores percentages)
+    for row in analysis:
+        row["actual_value"] = round((row["actual_pct"] / 100) * total_value, 2)
+        row["target_value"] = round((row["target_pct"] / 100) * total_value, 2)
+        row["gap_value"]    = round(row["actual_value"] - row["target_value"], 2)
+        if row["status"] == "overweight":
+            row["action"]        = "Reduce"
+            row["action_amount"] = abs(row["gap_value"])
+        elif row["status"] == "underweight":
+            row["action"]        = "Increase"
+            row["action_amount"] = abs(row["gap_value"])
+        else:
+            row["action"]        = "Hold"
+            row["action_amount"] = 0
 
     return render_template("results.html",
                            session_id=session_id,
