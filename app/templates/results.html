@@ -6,9 +6,31 @@
   <div class="step done">2 · Add stocks ✓</div>
   <div class="step active">3 · Results</div>
 </div>
-<div class="card">
+
+<!-- Portfolio value summary strip -->
+<div class="value-strip">
+  <div class="value-strip-item">
+    <span class="value-strip-label">Total portfolio value</span>
+    <span class="value-strip-number">Rs.{{ "{:,.0f}".format(total_value) }}</span>
+  </div>
+  <div class="value-strip-item">
+    <span class="value-strip-label">Total sectors</span>
+    <span class="value-strip-number">{{ analysis | length }}</span>
+  </div>
+  <div class="value-strip-item">
+    <span class="value-strip-label">Total stocks</span>
+    <span class="value-strip-number">{{ stocks | length }}</span>
+  </div>
+  <div class="value-strip-item">
+    <span class="value-strip-label">Sectors on target</span>
+    <span class="value-strip-number">{{ analysis | selectattr('status', 'eq', 'on-target') | list | length }}</span>
+  </div>
+</div>
+
+<!-- Sector exposure cards -->
+<div class="card" style="margin-top: 24px;">
   <h2>Your portfolio exposure report</h2>
-  <p class="hint">This shows how your actual holdings compare to your target allocation. Sectors within ±5% of target are considered on-track.</p>
+  <p class="hint">Sectors within ±5% of your target are considered on-track.</p>
   <div class="results-grid">
     {% for row in analysis %}
     <div class="result-card result-card--{{ row.status }}">
@@ -23,6 +45,10 @@
         <div class="bar-track"><div class="bar bar--actual" style="width: {{ [row.actual_pct, 100]|min }}%"></div></div>
         <div class="bar-value">{{ "%.1f"|format(row.actual_pct) }}%</div>
       </div>
+      <div class="result-values">
+        <span>Actual: Rs.{{ "{:,.0f}".format(row.actual_value) }}</span>
+        <span>Target: Rs.{{ "{:,.0f}".format(row.target_value) }}</span>
+      </div>
       <div class="result-footer">
         {% if row.status == "overweight" %}
           <span class="badge badge--danger">▲ Overweight by {{ "%.1f"|format(row.gap_pct) }}%</span>
@@ -35,22 +61,87 @@
     </div>
     {% endfor %}
   </div>
-  <div class="summary-box">
-    <h3>Summary</h3>
-    <ul>
+</div>
+
+<!-- Rebalancing suggestions table -->
+<div class="card" style="margin-top: 24px;">
+  <h3>Rebalancing suggestions</h3>
+  <p class="hint">Exactly how much to move in or out of each sector to match your target allocation.</p>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Sector</th>
+        <th>Current value</th>
+        <th>Target value</th>
+        <th>Difference</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
       {% for row in analysis %}
-        {% if row.status == "overweight" %}
-          <li>🔴 <strong>{{ row.sector }}</strong> — You are {{ "%.1f"|format(row.gap_pct) }}% overexposed. Consider reducing holdings here.</li>
-        {% elif row.status == "underweight" %}
-          <li>🟡 <strong>{{ row.sector }}</strong> — You are {{ "%.1f"|format(row.gap_pct|abs) }}% underexposed. Consider adding more here.</li>
-        {% else %}
-          <li>🟢 <strong>{{ row.sector }}</strong> — Well balanced, within ±5% of your target.</li>
-        {% endif %}
+      <tr>
+        <td><strong>{{ row.sector }}</strong></td>
+        <td>Rs.{{ "{:,.0f}".format(row.actual_value) }}</td>
+        <td>Rs.{{ "{:,.0f}".format(row.target_value) }}</td>
+        <td>
+          {% if row.gap_value > 0 %}
+            <span style="color: var(--clr-danger);">+Rs.{{ "{:,.0f}".format(row.gap_value) }}</span>
+          {% elif row.gap_value < 0 %}
+            <span style="color: var(--clr-warning);">-Rs.{{ "{:,.0f}".format(row.gap_value|abs) }}</span>
+          {% else %}
+            <span style="color: var(--clr-success);">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if row.action == "Reduce" %}
+            <span class="action-badge action-badge--sell">Sell Rs.{{ "{:,.0f}".format(row.action_amount) }}</span>
+          {% elif row.action == "Increase" %}
+            <span class="action-badge action-badge--buy">Buy Rs.{{ "{:,.0f}".format(row.action_amount) }}</span>
+          {% else %}
+            <span class="action-badge action-badge--hold">Hold</span>
+          {% endif %}
+        </td>
+      </tr>
       {% endfor %}
-    </ul>
+    </tbody>
+  </table>
+
+  <!-- Summary of total action needed -->
+  <div class="rebalance-summary">
+    <div class="rebalance-summary-item rebalance-summary-item--sell">
+      <span class="rs-label">Total to sell / reduce</span>
+      <span class="rs-value">Rs.{{ "{:,.0f}".format(analysis | selectattr('action', 'eq', 'Reduce') | map(attribute='action_amount') | sum) }}</span>
+    </div>
+    <div class="rebalance-summary-item rebalance-summary-item--buy">
+      <span class="rs-label">Total to buy / add</span>
+      <span class="rs-value">Rs.{{ "{:,.0f}".format(analysis | selectattr('action', 'eq', 'Increase') | map(attribute='action_amount') | sum) }}</span>
+    </div>
   </div>
 </div>
 
+<!-- Plain English summary -->
+<div class="card" style="margin-top: 24px;">
+  <h3>Plain English summary</h3>
+  <ul class="summary-list">
+    {% for row in analysis %}
+      {% if row.status == "overweight" %}
+        <li class="summary-list-item summary-list-item--danger">
+          <strong>{{ row.sector }}</strong> — You have Rs.{{ "{:,.0f}".format(row.action_amount) }} more than your target here. Consider selling some {{ row.sector }} stocks to rebalance.
+        </li>
+      {% elif row.status == "underweight" %}
+        <li class="summary-list-item summary-list-item--warning">
+          <strong>{{ row.sector }}</strong> — You have Rs.{{ "{:,.0f}".format(row.action_amount) }} less than your target here. Consider buying more {{ row.sector }} stocks to rebalance.
+        </li>
+      {% else %}
+        <li class="summary-list-item summary-list-item--success">
+          <strong>{{ row.sector }}</strong> — Well balanced. No action needed.
+        </li>
+      {% endif %}
+    {% endfor %}
+  </ul>
+</div>
+
+<!-- Holdings table -->
 <div class="card" style="margin-top: 24px;">
   <h3>All holdings in this session</h3>
   <table class="data-table">
@@ -77,6 +168,7 @@
   </table>
 </div>
 
+<!-- Charts -->
 <div class="card" style="margin-top: 24px;">
   <h3>Target vs actual comparison</h3>
   <canvas id="comparisonChart" height="100"></canvas>
@@ -84,7 +176,7 @@
 
 <div class="card" style="margin-top: 24px;">
   <h3>Portfolio composition by value</h3>
-  <p class="hint">Shows how your actual portfolio is split by total invested value (quantity x buy price).</p>
+  <p class="hint">Shows how your actual portfolio is split by total invested value.</p>
   <div class="pie-chart-wrapper">
     <canvas id="pieChart"></canvas>
   </div>
@@ -107,126 +199,4 @@ var targets = {{ analysis | map(attribute='target_pct') | list | tojson }};
 var stockData = {{ stocks | tojson }};
 var sectorValues = {};
 stockData.forEach(function(stock) {
-  var value = stock.quantity * stock.buy_price;
-  if (sectorValues[stock.sector]) {
-    sectorValues[stock.sector] += value;
-  } else {
-    sectorValues[stock.sector] = value;
-  }
-});
-
-var pieValues = labels.map(function(label) {
-  return sectorValues[label] || 0;
-});
-
-var pieColors = [
-  "rgba(47,84,235,0.8)",
-  "rgba(42,157,92,0.8)",
-  "rgba(192,57,43,0.8)",
-  "rgba(201,124,16,0.8)",
-  "rgba(142,68,173,0.8)",
-  "rgba(39,174,96,0.8)",
-  "rgba(41,128,185,0.8)",
-  "rgba(231,76,60,0.8)",
-  "rgba(243,156,18,0.8)",
-  "rgba(26,188,156,0.8)",
-];
-
-var barCtx = document.getElementById("comparisonChart").getContext("2d");
-new Chart(barCtx, {
-  type: "bar",
-  data: {
-    labels: labels,
-    datasets: [
-      {
-        label: "Target %",
-        data: targets,
-        backgroundColor: "rgba(47,84,235,0.25)",
-        borderColor: "rgba(47,84,235,0.9)",
-        borderWidth: 2
-      },
-      {
-        label: "Actual %",
-        data: actuals,
-        backgroundColor: "rgba(42,157,92,0.25)",
-        borderColor: "rgba(42,157,92,0.9)",
-        borderWidth: 2
-      }
-    ]
-  },
-  options: {
-    responsive: true,
-    plugins: {
-      legend: { position: "top" },
-      tooltip: {
-        callbacks: {
-          label: function(ctx) {
-            return ctx.dataset.label + ": " + ctx.parsed.y.toFixed(1) + "%";
-          }
-        }
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        max: 100,
-        ticks: { callback: function(val) { return val + "%"; } }
-      }
-    }
-  }
-});
-
-var pieCtx = document.getElementById("pieChart").getContext("2d");
-new Chart(pieCtx, {
-  type: "pie",
-  data: {
-    labels: labels,
-    datasets: [{
-      data: pieValues,
-      backgroundColor: pieColors.slice(0, labels.length),
-      borderColor: "#ffffff",
-      borderWidth: 3
-    }]
-  },
-  options: {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: "right",
-        labels: { padding: 20, font: { size: 13 } }
-      },
-      tooltip: {
-        callbacks: {
-          label: function(ctx) {
-            var value = ctx.parsed;
-            var total = ctx.dataset.data.reduce(function(a, b) { return a + b; }, 0);
-            var pct = ((value / total) * 100).toFixed(1);
-            var formatted = "Rs." + value.toLocaleString("en-IN", {maximumFractionDigits: 0});
-            return ctx.label + ": " + formatted + " (" + pct + "%)";
-          }
-        }
-      }
-    }
-  }
-});
-
-function downloadPDF() {
-  var barCanvas = document.getElementById("comparisonChart");
-  var pieCanvas = document.getElementById("pieChart");
-  var barImage = barCanvas.toDataURL("image/png");
-  var pieImage = pieCanvas.toDataURL("image/png");
-  var barImg = document.createElement("img");
-  barImg.src = barImage;
-  barImg.style.width = "100%";
-  barCanvas.parentNode.replaceChild(barImg, barCanvas);
-  var pieImg = document.createElement("img");
-  pieImg.src = pieImage;
-  pieImg.style.width = "100%";
-  pieCanvas.parentNode.replaceChild(pieImg, pieCanvas);
-  setTimeout(function() {
-    window.print();
-    setTimeout(function() { window.location.reload(); }, 1000);
-  }, 500);
-}
-</script>
-{% endblock %}
+  var v
