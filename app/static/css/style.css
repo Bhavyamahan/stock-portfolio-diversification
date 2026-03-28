@@ -141,3 +141,18 @@ input:focus, select:focus { outline: none; border-color: var(--clr-primary); box
   .progress-bar .step { font-size: 11px; padding: 11px 8px; }
   .rebalance-summary { grid-template-columns: 1fr; }
 }
+/* ── Auth pages ──────────────────────────────────────── */
+.auth-wrapper { display: flex; align-items: center; justify-content: center; min-height: 60vh; padding: 40px 24px; }
+.auth-card { background: var(--clr-surface); border: 1px solid var(--clr-border); border-radius: var(--radius); padding: 40px; width: 100%; max-width: 440px; box-shadow: var(--shadow); }
+.auth-logo { font-size: 14px; font-weight: 700; color: var(--clr-primary); margin-bottom: 24px; letter-spacing: -0.2px; }
+.auth-card h2 { font-size: 26px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.4px; }
+.auth-switch { margin-top: 24px; text-align: center; font-size: 14px; color: var(--clr-muted); }
+.auth-switch a { color: var(--clr-primary); font-weight: 600; text-decoration: none; }
+.auth-switch a:hover { text-decoration: underline; }
+
+/* ── Nav auth buttons ────────────────────────────────── */
+.nav-username { font-size: 14px; color: rgba(255,255,255,0.8); font-weight: 500; }
+.btn--logout { background: transparent; color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.3); padding: 6px 14px; font-size: 13px; border-radius: 6px; }
+.btn--logout:hover { background: rgba(255,255,255,0.1); color: #fff; transform: none; }
+.btn--signup { background: var(--clr-primary); color: #fff; padding: 7px 16px; font-size: 13px; border-radius: 6px; }
+.btn--signup:hover { background: var(--clr-primary-d); transform: none; }
