@@ -7,7 +7,6 @@
   <div class="step active">3 · Results</div>
 </div>
 
-<!-- Portfolio value summary strip -->
 <div class="value-strip">
   <div class="value-strip-item">
     <span class="value-strip-label">Total portfolio value</span>
@@ -23,14 +22,13 @@
   </div>
   <div class="value-strip-item">
     <span class="value-strip-label">Sectors on target</span>
-    <span class="value-strip-number">{{ analysis | selectattr('status', 'eq', 'on-target') | list | length }}</span>
+    <span class="value-strip-number">{{ analysis | selectattr("status", "equalto", "on-target") | list | length }}</span>
   </div>
 </div>
 
-<!-- Sector exposure cards -->
 <div class="card" style="margin-top: 24px;">
   <h2>Your portfolio exposure report</h2>
-  <p class="hint">Sectors within ±5% of your target are considered on-track.</p>
+  <p class="hint">Sectors within +-5% of your target are considered on-track.</p>
   <div class="results-grid">
     {% for row in analysis %}
     <div class="result-card result-card--{{ row.status }}">
@@ -51,11 +49,11 @@
       </div>
       <div class="result-footer">
         {% if row.status == "overweight" %}
-          <span class="badge badge--danger">▲ Overweight by {{ "%.1f"|format(row.gap_pct) }}%</span>
+          <span class="badge badge--danger">Overweight by {{ "%.1f"|format(row.gap_pct) }}%</span>
         {% elif row.status == "underweight" %}
-          <span class="badge badge--warning">▼ Underweight by {{ "%.1f"|format(row.gap_pct|abs) }}%</span>
+          <span class="badge badge--warning">Underweight by {{ "%.1f"|format(row.gap_pct|abs) }}%</span>
         {% else %}
-          <span class="badge badge--success">✓ On target</span>
+          <span class="badge badge--success">On target</span>
         {% endif %}
       </div>
     </div>
@@ -63,7 +61,6 @@
   </div>
 </div>
 
-<!-- Rebalancing suggestions table -->
 <div class="card" style="margin-top: 24px;">
   <h3>Rebalancing suggestions</h3>
   <p class="hint">Exactly how much to move in or out of each sector to match your target allocation.</p>
@@ -89,7 +86,7 @@
           {% elif row.gap_value < 0 %}
             <span style="color: var(--clr-warning);">-Rs.{{ "{:,.0f}".format(row.gap_value|abs) }}</span>
           {% else %}
-            <span style="color: var(--clr-success);">—</span>
+            <span style="color: var(--clr-success);">-</span>
           {% endif %}
         </td>
         <td>
@@ -105,32 +102,29 @@
       {% endfor %}
     </tbody>
   </table>
-
-  <!-- Summary of total action needed -->
   <div class="rebalance-summary">
     <div class="rebalance-summary-item rebalance-summary-item--sell">
       <span class="rs-label">Total to sell / reduce</span>
-      <span class="rs-value">Rs.{{ "{:,.0f}".format(analysis | selectattr('action', 'eq', 'Reduce') | map(attribute='action_amount') | sum) }}</span>
+      <span class="rs-value">Rs.{{ "{:,.0f}".format(analysis | selectattr("action", "equalto", "Reduce") | map(attribute="action_amount") | sum) }}</span>
     </div>
     <div class="rebalance-summary-item rebalance-summary-item--buy">
       <span class="rs-label">Total to buy / add</span>
-      <span class="rs-value">Rs.{{ "{:,.0f}".format(analysis | selectattr('action', 'eq', 'Increase') | map(attribute='action_amount') | sum) }}</span>
+      <span class="rs-value">Rs.{{ "{:,.0f}".format(analysis | selectattr("action", "equalto", "Increase") | map(attribute="action_amount") | sum) }}</span>
     </div>
   </div>
 </div>
 
-<!-- Plain English summary -->
 <div class="card" style="margin-top: 24px;">
   <h3>Plain English summary</h3>
   <ul class="summary-list">
     {% for row in analysis %}
       {% if row.status == "overweight" %}
         <li class="summary-list-item summary-list-item--danger">
-          <strong>{{ row.sector }}</strong> — You have Rs.{{ "{:,.0f}".format(row.action_amount) }} more than your target here. Consider selling some {{ row.sector }} stocks to rebalance.
+          <strong>{{ row.sector }}</strong> — You have Rs.{{ "{:,.0f}".format(row.action_amount) }} more than your target. Consider selling some {{ row.sector }} stocks.
         </li>
       {% elif row.status == "underweight" %}
         <li class="summary-list-item summary-list-item--warning">
-          <strong>{{ row.sector }}</strong> — You have Rs.{{ "{:,.0f}".format(row.action_amount) }} less than your target here. Consider buying more {{ row.sector }} stocks to rebalance.
+          <strong>{{ row.sector }}</strong> — You have Rs.{{ "{:,.0f}".format(row.action_amount) }} less than your target. Consider buying more {{ row.sector }} stocks.
         </li>
       {% else %}
         <li class="summary-list-item summary-list-item--success">
@@ -141,7 +135,6 @@
   </ul>
 </div>
 
-<!-- Holdings table -->
 <div class="card" style="margin-top: 24px;">
   <h3>All holdings in this session</h3>
   <table class="data-table">
@@ -168,7 +161,6 @@
   </table>
 </div>
 
-<!-- Charts -->
 <div class="card" style="margin-top: 24px;">
   <h3>Target vs actual comparison</h3>
   <canvas id="comparisonChart" height="100"></canvas>
@@ -199,4 +191,124 @@ var targets = {{ analysis | map(attribute='target_pct') | list | tojson }};
 var stockData = {{ stocks | tojson }};
 var sectorValues = {};
 stockData.forEach(function(stock) {
-  var v
+  var value = stock.quantity * stock.buy_price;
+  if (sectorValues[stock.sector]) {
+    sectorValues[stock.sector] += value;
+  } else {
+    sectorValues[stock.sector] = value;
+  }
+});
+
+var pieValues = labels.map(function(label) {
+  return sectorValues[label] || 0;
+});
+
+var pieColors = [
+  "rgba(47,84,235,0.85)",
+  "rgba(42,157,92,0.85)",
+  "rgba(192,57,43,0.85)",
+  "rgba(201,124,16,0.85)",
+  "rgba(142,68,173,0.85)",
+  "rgba(39,174,96,0.85)",
+  "rgba(41,128,185,0.85)",
+  "rgba(231,76,60,0.85)",
+  "rgba(243,156,18,0.85)",
+  "rgba(26,188,156,0.85)",
+];
+
+var barCtx = document.getElementById("comparisonChart").getContext("2d");
+new Chart(barCtx, {
+  type: "bar",
+  data: {
+    labels: labels,
+    datasets: [
+      {
+        label: "Target %",
+        data: targets,
+        backgroundColor: "rgba(47,84,235,0.25)",
+        borderColor: "rgba(47,84,235,0.9)",
+        borderWidth: 2
+      },
+      {
+        label: "Actual %",
+        data: actuals,
+        backgroundColor: "rgba(42,157,92,0.25)",
+        borderColor: "rgba(42,157,92,0.9)",
+        borderWidth: 2
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: "top" },
+      tooltip: {
+        callbacks: {
+          label: function(ctx) {
+            return ctx.dataset.label + ": " + ctx.parsed.y.toFixed(1) + "%";
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+        ticks: { callback: function(val) { return val + "%"; } }
+      }
+    }
+  }
+});
+
+var pieCtx = document.getElementById("pieChart").getContext("2d");
+new Chart(pieCtx, {
+  type: "pie",
+  data: {
+    labels: labels,
+    datasets: [{
+      data: pieValues,
+      backgroundColor: pieColors.slice(0, labels.length),
+      borderColor: "#ffffff",
+      borderWidth: 3
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "right",
+        labels: { padding: 20, font: { size: 13 } }
+      },
+      tooltip: {
+        callbacks: {
+          label: function(ctx) {
+            var value = ctx.parsed;
+            var total = ctx.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+            var pct = ((value / total) * 100).toFixed(1);
+            var formatted = "Rs." + value.toLocaleString("en-IN", {maximumFractionDigits: 0});
+            return ctx.label + ": " + formatted + " (" + pct + "%)";
+          }
+        }
+      }
+    }
+  }
+});
+
+function downloadPDF() {
+  var barCanvas = document.getElementById("comparisonChart");
+  var pieCanvas = document.getElementById("pieChart");
+  var barImg = document.createElement("img");
+  barImg.src = barCanvas.toDataURL("image/png");
+  barImg.style.width = "100%";
+  barCanvas.parentNode.replaceChild(barImg, barCanvas);
+  var pieImg = document.createElement("img");
+  pieImg.src = pieCanvas.toDataURL("image/png");
+  pieImg.style.width = "100%";
+  pieCanvas.parentNode.replaceChild(pieImg, pieCanvas);
+  setTimeout(function() {
+    window.print();
+    setTimeout(function() { window.location.reload(); }, 1000);
+  }, 500);
+}
+</script>
+{% endblock %}
