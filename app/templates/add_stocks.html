@@ -11,50 +11,70 @@
 </div>
 <div class="card">
   <h2>Step 2 — Enter your stock holdings</h2>
-  <p class="hint">Add each stock you own. Enter the name, how many shares you hold, and which sector it belongs to.</p>
+  <p class="hint">
+    Type the stock name and click <strong>Get live price</strong> to auto-fill the current market price.
+    Or enter the price manually if you prefer.
+  </p>
   <form action="" method="POST" id="stock-form">
-   <div class="stock-input-grid">
-  <div class="field">
-    <label for="name">Stock name</label>
-    <input type="text" id="name" name="name" placeholder="e.g. Infosys, TCS, HDFC Bank" required />
-  </div>
-  <div class="field">
-    <label for="quantity">Quantity (shares)</label>
-    <input type="number" id="quantity" name="quantity" placeholder="e.g. 50" min="0.001" step="any" required />
-  </div>
-  <div class="field">
-    <label for="buy_price">Buy price (₹ per share)</label>
-    <input type="number" id="buy_price" name="buy_price" placeholder="e.g. 1200" min="0.01" step="any" required />
-  </div>
-  <div class="field">
-    <label for="sector">Sector</label>
-    <select id="sector" name="sector" required>
-      <option value="">— Select sector —</option>
-      {% for s in sectors %}
-        <option value="{{ s }}">{{ s }}</option>
-      {% endfor %}
-    </select>
-  </div>
-</div>
+    <div class="stock-input-grid">
+      <div class="field">
+        <label for="name">Stock name or ticker</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="name" name="name" placeholder="e.g. Infosys, INFY, HDFC Bank" required style="flex:1;" />
+          <button type="button" class="btn btn--secondary btn--sm" id="fetch-btn" onclick="fetchPrice()" style="white-space:nowrap;">
+            Get live price
+          </button>
+        </div>
+        <span id="price-status" style="font-size:12px; margin-top:4px;"></span>
+      </div>
+      <div class="field">
+        <label for="quantity">Quantity (shares)</label>
+        <input type="number" id="quantity" name="quantity" placeholder="e.g. 50" min="0.001" step="any" required />
+      </div>
+      <div class="field">
+        <label for="buy_price">Buy price (Rs. per share)</label>
+        <input type="number" id="buy_price" name="buy_price" placeholder="e.g. 1200" min="0.01" step="any" required />
+      </div>
+      <div class="field">
+        <label for="sector">Sector</label>
+        <select id="sector" name="sector" required>
+          <option value="">— Select sector —</option>
+          {% for s in sectors %}
+            <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
     <div class="form-actions">
       <button type="submit" class="btn btn--primary">+ Add stock</button>
     </div>
   </form>
 </div>
+
 {% if stocks %}
 <div class="card" style="margin-top: 24px;">
   <h3>Stocks added so far ({{ stocks|length }})</h3>
   <table class="data-table">
-   <thead><tr><th>#</th><th>Stock name</th><th>Quantity</th><th>Buy price</th><th>Total value</th><th>Sector</th><th>Remove</th></tr></thead>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Stock name</th>
+        <th>Quantity</th>
+        <th>Buy price</th>
+        <th>Total value</th>
+        <th>Sector</th>
+        <th>Remove</th>
+      </tr>
+    </thead>
     <tbody>
       {% for stock in stocks %}
       <tr>
         <td>{{ loop.index }}</td>
         <td><strong>{{ stock.name }}</strong></td>
-      <td>{{ stock.quantity }}</td>
-<td>₹{{ stock.buy_price }}</td>
-<td><strong>₹{{ "{:,.0f}".format(stock.quantity * stock.buy_price) }}</strong></td>
-<td><span class="sector-tag">{{ stock.sector }}</span></td>
+        <td>{{ stock.quantity }}</td>
+        <td>Rs.{{ stock.buy_price }}</td>
+        <td><strong>Rs.{{ "{:,.0f}".format(stock.quantity * stock.buy_price) }}</strong></td>
+        <td><span class="sector-tag">{{ stock.sector }}</span></td>
         <td>
           <form action="/session/{{ session_id }}/stocks/{{ stock.id }}/delete" method="POST" style="display:inline;">
             <button type="submit" class="btn-remove-sm" onclick="return confirm('Remove {{ stock.name }}?')">✕</button>
@@ -72,4 +92,54 @@
 {% else %}
 <p class="hint" style="text-align:center; margin-top: 24px;">No stocks added yet. Use the form above to add your first holding.</p>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function fetchPrice() {
+  var stockName = document.getElementById("name").value.trim();
+  if (!stockName) {
+    document.getElementById("price-status").textContent = "Please enter a stock name first.";
+    document.getElementById("price-status").style.color = "var(--clr-danger)";
+    return;
+  }
+  var btn = document.getElementById("fetch-btn");
+  btn.textContent = "Fetching...";
+  btn.disabled = true;
+  document.getElementById("price-status").textContent = "Looking up live price...";
+  document.getElementById("price-status").style.color = "var(--clr-muted)";
+
+  fetch("/api/get-price?stock=" + encodeURIComponent(stockName))
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      btn.textContent = "Get live price";
+      btn.disabled = false;
+      if (data.success) {
+        document.getElementById("buy_price").value = data.price;
+        document.getElementById("price-status").textContent =
+          "Live price fetched: Rs." + data.price.toLocaleString("en-IN") +
+          " (" + data.ticker + ")";
+        document.getElementById("price-status").style.color = "var(--clr-success)";
+      } else {
+        document.getElementById("price-status").textContent =
+          data.error + " — please enter price manually.";
+        document.getElementById("price-status").style.color = "var(--clr-warning)";
+      }
+    })
+    .catch(function() {
+      btn.textContent = "Get live price";
+      btn.disabled = false;
+      document.getElementById("price-status").textContent =
+        "Could not fetch price. Please enter manually.";
+      document.getElementById("price-status").style.color = "var(--clr-danger)";
+    });
+}
+
+document.getElementById("name").addEventListener("keypress", function(e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    fetchPrice();
+  }
+});
+</script>
 {% endblock %}
