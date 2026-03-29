@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from .database import (create_session, get_session, get_sessions_by_user,
     save_target_allocations, get_target_allocations,
@@ -6,7 +6,6 @@ from .database import (create_session, get_session, get_sessions_by_user,
     save_analysis_results, get_analysis_results,
     create_user, get_user_by_email, get_user_by_id)
 from .analysis import run_analysis
-from .stock_price import get_live_price
 
 main = Blueprint("main", __name__)
 
@@ -124,19 +123,6 @@ def target_allocation(session_id):
         return redirect(url_for("main.add_stocks", session_id=session_id))
     return render_template("target_allocation.html", session_id=session_id, existing=existing)
 
-@main.route("/api/get-price")
-@login_required
-def api_get_price():
-    """
-    API endpoint called by JavaScript when user types a stock name.
-    Returns live price as JSON.
-    """
-    stock_name = request.args.get("stock", "").strip()
-    if not stock_name:
-        return jsonify({"success": False, "error": "No stock name provided"})
-    result = get_live_price(stock_name)
-    return jsonify(result)
-
 @main.route("/session/<int:session_id>/stocks", methods=["GET", "POST"])
 @login_required
 def add_stocks(session_id):
@@ -222,44 +208,12 @@ def results(session_id):
         else:
             row["action"]        = "Hold"
             row["action_amount"] = 0
-
-    # Smart rebalancing — fetch live prices for each stock
-    # and calculate how many shares to buy/sell
-    rebalancing = []
-    for row in analysis:
-        if row["action"] == "Hold":
-            continue
-        sector_stocks = [s for s in stocks if s["sector"] == row["sector"]]
-        suggestions   = []
-        for stock in sector_stocks:
-            live = get_live_price(stock["name"])
-            if live["success"] and live["price"] > 0:
-                current_price = live["price"]
-            else:
-                current_price = float(stock["buy_price"])
-            if current_price > 0:
-                shares = abs(row["gap_value"]) / current_price
-                suggestions.append({
-                    "stock":         stock["name"],
-                    "action":        row["action"],
-                    "current_price": current_price,
-                    "shares":        round(shares, 2),
-                    "amount":        abs(row["gap_value"]),
-                })
-        if suggestions:
-            rebalancing.append({
-                "sector":      row["sector"],
-                "action":      row["action"],
-                "suggestions": suggestions,
-            })
-
     return render_template("results.html",
                            session_id=session_id,
                            analysis=analysis,
                            stocks=stocks,
                            sess=sess,
-                           total_value=total_value,
-                           rebalancing=rebalancing)
+                           total_value=total_value)
 
 @main.route("/history")
 @login_required
