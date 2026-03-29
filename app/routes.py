@@ -1,6 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 from .database import (create_session, get_session, get_sessions_by_user,
     save_target_allocations, get_target_allocations,
     add_stock, get_stocks, delete_stock,
@@ -9,7 +8,6 @@ from .database import (create_session, get_session, get_sessions_by_user,
 from .analysis import run_analysis
 import csv
 import io
-import os
 
 main = Blueprint("main", __name__)
 
@@ -171,11 +169,6 @@ def add_stocks(session_id):
 @main.route("/session/<int:session_id>/stocks/upload", methods=["POST"])
 @login_required
 def upload_stocks(session_id):
-    """
-    Handles CSV file upload.
-    Reads each row and adds it as a stock entry.
-    Expected columns: Stock Name, Quantity, Buy Price, Sector
-    """
     targets = get_target_allocations(dbu(), dbt(), session_id)
     valid_sectors = [t["sector"] for t in targets]
 
@@ -193,10 +186,10 @@ def upload_stocks(session_id):
         return redirect(url_for("main.add_stocks", session_id=session_id))
 
     try:
-        content  = file.read().decode("utf-8-sig")
-        reader   = csv.DictReader(io.StringIO(content))
-        added    = 0
-        errors   = []
+        content = file.read().decode("utf-8-sig")
+        reader  = csv.DictReader(io.StringIO(content))
+        added   = 0
+        errors  = []
 
         for i, row in enumerate(reader, start=2):
             name      = str(row.get("Stock Name", "") or row.get("stock_name", "") or row.get("Name", "")).strip()
@@ -220,11 +213,15 @@ def upload_stocks(session_id):
                 errors.append(f"Row {i}: Missing sector for {name}.")
                 continue
 
-           sector_match = next((s for s in valid_sectors if s.lower() == sector.lower()), None)
-if not sector_match:
-                errors.append(f"Row {i}: Sector '{sector}' not in your defined sectors. Valid sectors: {', '.join(valid_sectors)}")
-            continue
-        sector = sector_match
+            sector_match = next(
+                (s for s in valid_sectors if s.strip().lower() == sector.strip().lower()),
+                None
+            )
+            if not sector_match:
+                errors.append(f"Row {i}: Sector '{sector}' not found. Valid sectors: {', '.join(valid_sectors)}")
+                continue
+
+            sector = sector_match
 
             try:
                 qty_val   = float(quantity)
@@ -256,14 +253,9 @@ if not sector_match:
 
     return redirect(url_for("main.add_stocks", session_id=session_id))
 
-
 @main.route("/download-template")
 @login_required
 def download_template():
-    """
-    Generates and downloads a CSV template file
-    so users know exactly how to format their data.
-    """
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["Stock Name", "Quantity", "Buy Price", "Sector"])
