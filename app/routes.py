@@ -220,9 +220,11 @@ def upload_stocks(session_id):
                 errors.append(f"Row {i}: Missing sector for {name}.")
                 continue
 
-            if sector not in valid_sectors:
+           sector_match = next((s for s in valid_sectors if s.lower() == sector.lower()), None)
+if not sector_match:
                 errors.append(f"Row {i}: Sector '{sector}' not in your defined sectors. Valid sectors: {', '.join(valid_sectors)}")
-                continue
+            continue
+        sector = sector_match
 
             try:
                 qty_val   = float(quantity)
