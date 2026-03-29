@@ -11,21 +11,12 @@
 </div>
 <div class="card">
   <h2>Step 2 — Enter your stock holdings</h2>
-  <p class="hint">
-    Type the stock name and click <strong>Get live price</strong> to auto-fill the current market price.
-    Or enter the price manually if you prefer.
-  </p>
+  <p class="hint">Add each stock you own. Enter the name, quantity, buy price per share, and which sector it belongs to.</p>
   <form action="" method="POST" id="stock-form">
     <div class="stock-input-grid">
       <div class="field">
-        <label for="name">Stock name or ticker</label>
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="name" name="name" placeholder="e.g. Infosys, INFY, HDFC Bank" required style="flex:1;" />
-          <button type="button" class="btn btn--secondary btn--sm" id="fetch-btn" onclick="fetchPrice()" style="white-space:nowrap;">
-            Get live price
-          </button>
-        </div>
-        <span id="price-status" style="font-size:12px; margin-top:4px;"></span>
+        <label for="name">Stock name</label>
+        <input type="text" id="name" name="name" placeholder="e.g. Infosys, TCS, HDFC Bank" required />
       </div>
       <div class="field">
         <label for="quantity">Quantity (shares)</label>
@@ -92,54 +83,4 @@
 {% else %}
 <p class="hint" style="text-align:center; margin-top: 24px;">No stocks added yet. Use the form above to add your first holding.</p>
 {% endif %}
-{% endblock %}
-
-{% block scripts %}
-<script>
-function fetchPrice() {
-  var stockName = document.getElementById("name").value.trim();
-  if (!stockName) {
-    document.getElementById("price-status").textContent = "Please enter a stock name first.";
-    document.getElementById("price-status").style.color = "var(--clr-danger)";
-    return;
-  }
-  var btn = document.getElementById("fetch-btn");
-  btn.textContent = "Fetching...";
-  btn.disabled = true;
-  document.getElementById("price-status").textContent = "Looking up live price...";
-  document.getElementById("price-status").style.color = "var(--clr-muted)";
-
-  fetch("/api/get-price?stock=" + encodeURIComponent(stockName))
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-      btn.textContent = "Get live price";
-      btn.disabled = false;
-      if (data.success) {
-        document.getElementById("buy_price").value = data.price;
-        document.getElementById("price-status").textContent =
-          "Live price fetched: Rs." + data.price.toLocaleString("en-IN") +
-          " (" + data.ticker + ")";
-        document.getElementById("price-status").style.color = "var(--clr-success)";
-      } else {
-        document.getElementById("price-status").textContent =
-          data.error + " — please enter price manually.";
-        document.getElementById("price-status").style.color = "var(--clr-warning)";
-      }
-    })
-    .catch(function() {
-      btn.textContent = "Get live price";
-      btn.disabled = false;
-      document.getElementById("price-status").textContent =
-        "Could not fetch price. Please enter manually.";
-      document.getElementById("price-status").style.color = "var(--clr-danger)";
-    });
-}
-
-document.getElementById("name").addEventListener("keypress", function(e) {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    fetchPrice();
-  }
-});
-</script>
 {% endblock %}
