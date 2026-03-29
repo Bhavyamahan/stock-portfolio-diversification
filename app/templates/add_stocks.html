@@ -10,27 +10,22 @@
   <a href="/session/{{ session_id }}/targets" class="btn btn--secondary btn--sm">← Edit target allocation</a>
 </div>
 
-<!-- CSV Upload card -->
 <div class="card">
   <h2>Upload your portfolio from a file</h2>
   <p class="hint">
-    Have a big portfolio? Download the template, fill it in Excel or Google Sheets, and upload it — all your stocks will be added at once.
+    Have a big portfolio? Download the template, fill it in Excel or Google Sheets, and upload it — all your stocks will be added at once. Supports CSV and Excel (.xlsx) files.
   </p>
   <div class="upload-zone">
     <div class="upload-zone-left">
-      <a href="/download-template" class="btn btn--secondary">
-        Download CSV template
-      </a>
-      <p class="hint" style="margin: 8px 0 0; font-size: 12px;">
-        Fill in: Stock Name, Quantity, Buy Price, Sector
-      </p>
+      <a href="/download-template" class="btn btn--secondary">Download CSV template</a>
+      <p class="hint" style="margin: 8px 0 0; font-size: 12px;">Fill in: Stock Name, Quantity, Buy Price, Sector</p>
     </div>
     <div class="upload-zone-divider">or</div>
     <div class="upload-zone-right">
       <form action="/session/{{ session_id }}/stocks/upload" method="POST" enctype="multipart/form-data">
         <div class="file-upload-row">
-          <input type="file" name="csv_file" id="csv_file" accept=".csv" class="file-input" />
-          <label for="csv_file" class="btn btn--secondary">Choose CSV file</label>
+          <input type="file" name="csv_file" id="csv_file" accept=".csv,.xlsx,.xls" class="file-input" />
+          <label for="csv_file" class="btn btn--secondary">Choose file</label>
           <span id="file-name" class="file-name-label">No file chosen</span>
           <button type="submit" class="btn btn--primary">Upload & import</button>
         </div>
@@ -39,7 +34,6 @@
   </div>
 </div>
 
-<!-- Manual entry card -->
 <div class="card" style="margin-top: 24px;">
   <h2>Or add stocks manually</h2>
   <p class="hint">Add one stock at a time using the form below.</p>
@@ -112,7 +106,7 @@
   </div>
 </div>
 {% else %}
-<p class="hint" style="text-align:center; margin-top: 24px;">No stocks added yet. Upload a CSV or use the form above.</p>
+<p class="hint" style="text-align:center; margin-top: 24px;">No stocks added yet. Upload a file or use the form above.</p>
 {% endif %}
 {% endblock %}
 
