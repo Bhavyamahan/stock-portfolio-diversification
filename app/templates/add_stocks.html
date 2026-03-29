@@ -9,9 +9,40 @@
 <div class="back-bar">
   <a href="/session/{{ session_id }}/targets" class="btn btn--secondary btn--sm">← Edit target allocation</a>
 </div>
+
+<!-- CSV Upload card -->
 <div class="card">
-  <h2>Step 2 — Enter your stock holdings</h2>
-  <p class="hint">Add each stock you own. Enter the name, quantity, buy price per share, and which sector it belongs to.</p>
+  <h2>Upload your portfolio from a file</h2>
+  <p class="hint">
+    Have a big portfolio? Download the template, fill it in Excel or Google Sheets, and upload it — all your stocks will be added at once.
+  </p>
+  <div class="upload-zone">
+    <div class="upload-zone-left">
+      <a href="/download-template" class="btn btn--secondary">
+        Download CSV template
+      </a>
+      <p class="hint" style="margin: 8px 0 0; font-size: 12px;">
+        Fill in: Stock Name, Quantity, Buy Price, Sector
+      </p>
+    </div>
+    <div class="upload-zone-divider">or</div>
+    <div class="upload-zone-right">
+      <form action="/session/{{ session_id }}/stocks/upload" method="POST" enctype="multipart/form-data">
+        <div class="file-upload-row">
+          <input type="file" name="csv_file" id="csv_file" accept=".csv" class="file-input" />
+          <label for="csv_file" class="btn btn--secondary">Choose CSV file</label>
+          <span id="file-name" class="file-name-label">No file chosen</span>
+          <button type="submit" class="btn btn--primary">Upload & import</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Manual entry card -->
+<div class="card" style="margin-top: 24px;">
+  <h2>Or add stocks manually</h2>
+  <p class="hint">Add one stock at a time using the form below.</p>
   <form action="" method="POST" id="stock-form">
     <div class="stock-input-grid">
       <div class="field">
@@ -68,7 +99,7 @@
         <td><span class="sector-tag">{{ stock.sector }}</span></td>
         <td>
           <form action="/session/{{ session_id }}/stocks/{{ stock.id }}/delete" method="POST" style="display:inline;">
-            <button type="submit" class="btn-remove-sm" onclick="return confirm('Remove {{ stock.name }}?')">✕</button>
+            <button type="submit" class="btn-remove-sm" onclick="return confirm('Remove {{ stock.name }}?')">Remove</button>
           </form>
         </td>
       </tr>
@@ -81,6 +112,15 @@
   </div>
 </div>
 {% else %}
-<p class="hint" style="text-align:center; margin-top: 24px;">No stocks added yet. Use the form above to add your first holding.</p>
+<p class="hint" style="text-align:center; margin-top: 24px;">No stocks added yet. Upload a CSV or use the form above.</p>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("csv_file").addEventListener("change", function() {
+  var label = document.getElementById("file-name");
+  label.textContent = this.files[0] ? this.files[0].name : "No file chosen";
+});
+</script>
 {% endblock %}
