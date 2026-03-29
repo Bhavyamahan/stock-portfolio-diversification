@@ -1,11 +1,15 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from .database import (create_session, get_session, get_sessions_by_user,
     save_target_allocations, get_target_allocations,
     add_stock, get_stocks, delete_stock,
     save_analysis_results, get_analysis_results,
     create_user, get_user_by_email, get_user_by_id)
 from .analysis import run_analysis
+import csv
+import io
+import os
 
 main = Blueprint("main", __name__)
 
@@ -163,6 +167,115 @@ def add_stocks(session_id):
     stocks = get_stocks(dbu(), dbt(), session_id)
     return render_template("add_stocks.html", session_id=session_id,
                            sectors=sectors, stocks=stocks)
+
+@main.route("/session/<int:session_id>/stocks/upload", methods=["POST"])
+@login_required
+def upload_stocks(session_id):
+    """
+    Handles CSV file upload.
+    Reads each row and adds it as a stock entry.
+    Expected columns: Stock Name, Quantity, Buy Price, Sector
+    """
+    targets = get_target_allocations(dbu(), dbt(), session_id)
+    valid_sectors = [t["sector"] for t in targets]
+
+    if "csv_file" not in request.files:
+        flash("No file selected.", "danger")
+        return redirect(url_for("main.add_stocks", session_id=session_id))
+
+    file = request.files["csv_file"]
+    if file.filename == "":
+        flash("No file selected.", "danger")
+        return redirect(url_for("main.add_stocks", session_id=session_id))
+
+    if not file.filename.lower().endswith(".csv"):
+        flash("Please upload a CSV file only.", "danger")
+        return redirect(url_for("main.add_stocks", session_id=session_id))
+
+    try:
+        content  = file.read().decode("utf-8-sig")
+        reader   = csv.DictReader(io.StringIO(content))
+        added    = 0
+        errors   = []
+
+        for i, row in enumerate(reader, start=2):
+            name      = str(row.get("Stock Name", "") or row.get("stock_name", "") or row.get("Name", "")).strip()
+            quantity  = str(row.get("Quantity",   "") or row.get("quantity",   "")).strip()
+            buy_price = str(row.get("Buy Price",  "") or row.get("buy_price",  "") or row.get("Price", "")).strip()
+            sector    = str(row.get("Sector",     "") or row.get("sector",     "")).strip()
+
+            if not name and not quantity and not buy_price and not sector:
+                continue
+
+            if not name:
+                errors.append(f"Row {i}: Missing stock name.")
+                continue
+            if not quantity:
+                errors.append(f"Row {i}: Missing quantity for {name}.")
+                continue
+            if not buy_price:
+                errors.append(f"Row {i}: Missing buy price for {name}.")
+                continue
+            if not sector:
+                errors.append(f"Row {i}: Missing sector for {name}.")
+                continue
+
+            if sector not in valid_sectors:
+                errors.append(f"Row {i}: Sector '{sector}' not in your defined sectors. Valid sectors: {', '.join(valid_sectors)}")
+                continue
+
+            try:
+                qty_val   = float(quantity)
+                price_val = float(buy_price)
+                if qty_val <= 0 or price_val <= 0:
+                    errors.append(f"Row {i}: Quantity and price must be greater than 0 for {name}.")
+                    continue
+            except ValueError:
+                errors.append(f"Row {i}: Quantity and price must be numbers for {name}.")
+                continue
+
+            add_stock(dbu(), dbt(), session_id,
+                      name=name, quantity=qty_val,
+                      buy_price=price_val, sector=sector)
+            added += 1
+
+        if added > 0:
+            flash(f"Successfully imported {added} stock(s) from CSV!", "success")
+        if errors:
+            for err in errors[:5]:
+                flash(err, "warning")
+            if len(errors) > 5:
+                flash(f"...and {len(errors) - 5} more errors.", "warning")
+        if added == 0 and not errors:
+            flash("No valid stocks found in the CSV file.", "danger")
+
+    except Exception as e:
+        flash(f"Error reading CSV file: {str(e)}", "danger")
+
+    return redirect(url_for("main.add_stocks", session_id=session_id))
+
+
+@main.route("/download-template")
+@login_required
+def download_template():
+    """
+    Generates and downloads a CSV template file
+    so users know exactly how to format their data.
+    """
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Stock Name", "Quantity", "Buy Price", "Sector"])
+    writer.writerow(["Infosys", "50", "1450.00", "IT"])
+    writer.writerow(["HDFC Bank", "100", "1620.00", "Banking"])
+    writer.writerow(["Sun Pharma", "75", "1100.00", "Pharma"])
+    writer.writerow(["Reliance", "30", "2800.00", "Energy"])
+    output.seek(0)
+    return send_file(
+        io.BytesIO(output.getvalue().encode()),
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name="portfolio_template.csv"
+    )
 
 @main.route("/session/<int:session_id>/stocks/<int:stock_id>/delete", methods=["POST"])
 @login_required
