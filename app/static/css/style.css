@@ -312,3 +312,7 @@ input:focus, select:focus { outline: none; border-color: var(--clr-primary); box
   .about-avatar-wrapper { min-width: unset; }
   .about-photo { width: 100px; height: 100px; }
 }
+
+.built-by-photo { width: 80px; height: 80px; min-width: 80px; border-radius: 50%; object-fit: cover; object-position: center top; border: 3px solid var(--clr-primary); box-shadow: 0 4px 16px rgba(47,84,235,0.25); }
+.guest-prompt { border: 2px dashed var(--clr-primary); background: var(--clr-primary-light) !important; }
+.guest-prompt h3 { margin-bottom: 8px; }
