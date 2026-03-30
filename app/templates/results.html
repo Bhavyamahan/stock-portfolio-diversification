@@ -219,12 +219,22 @@
   </div>
 </div>
 
+{% if is_guest %}
+<div class="card guest-prompt" style="margin-top: 24px; text-align: center;">
+  <h3>Want to save this analysis?</h3>
+  <p class="hint">Create a free account to save your sessions, view history, and access your reports anytime.</p>
+  <div class="form-actions" style="justify-content: center;">
+    <a href="/signup" class="btn btn--primary btn--large">Create free account →</a>
+    <a href="/login" class="btn btn--secondary">Log in</a>
+  </div>
+</div>
+{% else %}
 <div class="form-actions" style="margin-top: 24px; text-align:center; justify-content:center;">
   <button onclick="downloadPDF()" class="btn btn--primary btn--large">Download PDF report</button>
   <a href="/session/{{ session_id }}/targets" class="btn btn--secondary">Edit target allocation</a>
   <a href="/new-session" class="btn btn--secondary">Start new analysis</a>
 </div>
-{% endblock %}
+{% endif %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
