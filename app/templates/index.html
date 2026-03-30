@@ -2,9 +2,8 @@
 {% block title %}Home · Stock Portfolio Diversification{% endblock %}
 {% block content %}
 
-<!-- Hero -->
 <section class="hero">
-  <div class="hero-badge">Free · No credit card · Built for Indian investors</div>
+  <div class="hero-badge">Free · Built for Indian investors</div>
   <h1>Know exactly where your money is</h1>
   <p class="subtitle">
     Set your target sector allocation, upload your holdings from Zerodha or enter them manually,
@@ -17,14 +16,13 @@
     </div>
   {% else %}
     <div class="hero-actions">
-      <a href="/signup" class="btn btn--primary btn--large">Get started free →</a>
-      <a href="/login" class="btn btn--secondary btn--large">Log in</a>
+      <a href="/guest-session" class="btn btn--primary btn--large">Try it now — no signup →</a>
+      <a href="/signup" class="btn btn--secondary btn--large">Create free account</a>
     </div>
+    <p class="hero-sub">No account needed to try · Sign up to save your history</p>
   {% endif %}
-  <p class="hero-sub">Trusted by investors · Works with Zerodha exports · No manual entry needed</p>
 </section>
 
-<!-- How it works -->
 <section class="how-it-works">
   <div class="step-card">
     <span class="step-num">1</span>
@@ -43,17 +41,14 @@
   </div>
 </section>
 
-<!-- Built by section -->
 <div class="card built-by-card" style="margin-top: 48px;">
   <div class="built-by-inner">
-    <div class="built-by-avatar">
-      <span>BC</span>
-    </div>
+    <img src="{{ url_for('static', filename='bhavya.jpg') }}" class="built-by-photo" alt="Bhavya Chhajed" />
     <div class="built-by-text">
       <p class="built-by-label">Built by</p>
       <h3>Bhavya Chhajed</h3>
       <p>
-        Student investor who built this tool to solve a real problem —
+        BSc Finance student who built this tool to solve a real problem —
         understanding true sector exposure without expensive tools.
         Built end-to-end with Python, Flask, and PostgreSQL.
       </p>
