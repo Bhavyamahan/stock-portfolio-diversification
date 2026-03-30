@@ -1,32 +1,65 @@
 {% extends "base.html" %}
 {% block title %}Home · Stock Portfolio Diversification{% endblock %}
 {% block content %}
+
+<!-- Hero -->
 <section class="hero">
+  <div class="hero-badge">Free · No credit card · Built for Indian investors</div>
   <h1>Know exactly where your money is</h1>
-  <p class="subtitle">Set your target sector allocation, add your holdings, and get a full exposure report with rebalancing suggestions.</p>
+  <p class="subtitle">
+    Set your target sector allocation, upload your holdings from Zerodha or enter them manually,
+    and get a full exposure report with exact rebalancing suggestions in rupees.
+  </p>
   {% if session.get('user_id') %}
-    <a href="/new-session" class="btn btn--primary btn--large">Start new analysis →</a>
-    <a href="/history" class="btn btn--secondary" style="margin-left:12px;">My past sessions</a>
+    <div class="hero-actions">
+      <a href="/new-session" class="btn btn--primary btn--large">Start new analysis →</a>
+      <a href="/history" class="btn btn--secondary btn--large">My past sessions</a>
+    </div>
   {% else %}
-    <a href="/signup" class="btn btn--primary btn--large">Get started free →</a>
-    <a href="/login" class="btn btn--secondary" style="margin-left:12px;">Log in</a>
+    <div class="hero-actions">
+      <a href="/signup" class="btn btn--primary btn--large">Get started free →</a>
+      <a href="/login" class="btn btn--secondary btn--large">Log in</a>
+    </div>
   {% endif %}
+  <p class="hero-sub">Trusted by investors · Works with Zerodha exports · No manual entry needed</p>
 </section>
+
+<!-- How it works -->
 <section class="how-it-works">
   <div class="step-card">
     <span class="step-num">1</span>
     <h3>Set your target split</h3>
-    <p>Enter how much % of your portfolio you want in each sector. Must add up to 100%.</p>
+    <p>Enter how much % of your portfolio you want in each sector — IT, Banking, Pharma, etc. Must add up to 100%.</p>
   </div>
   <div class="step-card">
     <span class="step-num">2</span>
-    <h3>Add your holdings</h3>
-    <p>Enter each stock — name, quantity, buy price, and sector.</p>
+    <h3>Upload or add holdings</h3>
+    <p>Upload your Zerodha Excel export directly, or add stocks one by one. Enter name, quantity, buy price, and sector.</p>
   </div>
   <div class="step-card">
     <span class="step-num">3</span>
     <h3>Get your report</h3>
-    <p>See exactly where you are overweight or underweight with rebalancing suggestions in rupees.</p>
+    <p>See exactly where you are overweight or underweight — with charts, rupee amounts, and a PDF you can download.</p>
   </div>
 </section>
+
+<!-- Built by section -->
+<div class="card built-by-card" style="margin-top: 48px;">
+  <div class="built-by-inner">
+    <div class="built-by-avatar">
+      <span>BC</span>
+    </div>
+    <div class="built-by-text">
+      <p class="built-by-label">Built by</p>
+      <h3>Bhavya Chhajed</h3>
+      <p>
+        Student investor who built this tool to solve a real problem —
+        understanding true sector exposure without expensive tools.
+        Built end-to-end with Python, Flask, and PostgreSQL.
+      </p>
+      <a href="/about" class="btn btn--secondary btn--sm" style="margin-top: 14px;">Read more about this project →</a>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
