@@ -15,8 +15,11 @@
           <span class="nav-username">Hi, {{ session.get('username') }}</span>
           <a href="/">Home</a>
           <a href="/history">My Sessions</a>
+          <a href="/about">About</a>
           <a href="/logout" class="btn btn--logout">Log out</a>
         {% else %}
+          <a href="/">Home</a>
+          <a href="/about">About</a>
           <a href="/login">Log in</a>
           <a href="/signup" class="btn btn--signup">Sign up</a>
         {% endif %}
@@ -37,7 +40,20 @@
   </main>
 
   <footer>
-    <p>Stock Portfolio Diversification Analyzer · Built with Python & Flask</p>
+    <div class="footer-inner">
+      <div class="footer-left">
+        <span class="footer-logo">Stock Portfolio Diversification</span>
+        <p>A free tool for Indian retail investors to understand and rebalance their portfolio.</p>
+      </div>
+      <div class="footer-right">
+        <p>Built by <strong>Bhavya Chhajed</strong></p>
+        <p>Python · Flask · PostgreSQL · Chart.js</p>
+        <a href="/about">Learn more →</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Stock Portfolio Diversification · Built with Python & Flask</p>
+    </div>
   </footer>
 
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
