@@ -31,6 +31,10 @@ def login_required(f):
 def index():
     return render_template("index.html")
 
+@main.route("/about")
+def about():
+    return render_template("about.html")
+
 @main.route("/signup", methods=["GET", "POST"])
 def signup():
     if session.get("user_id"):
@@ -168,42 +172,25 @@ def add_stocks(session_id):
 
 
 def extract_rows_from_excel(file_bytes):
-    """
-    Smartly reads an Excel file — works with both:
-    1. Simple files (headers on row 1) like our template
-    2. Zerodha-style files (lots of summary info, data starts later)
-
-    Returns a list of dicts with normalised keys.
-    """
     import openpyxl
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
     ws = wb.active
-
-    # Column names we are looking for (all lowercase for matching)
-    # Maps: what Zerodha calls it -> what we call it internally
-    NAME_ALIASES      = {"symbol", "stock name", "name", "scrip"}
-    QUANTITY_ALIASES  = {"quantity available", "quantity", "qty", "qty available", "available qty"}
-    PRICE_ALIASES     = {"average price", "avg price", "buy price", "price", "avg. price", "average cost"}
-    SECTOR_ALIASES    = {"sector"}
-
+    NAME_ALIASES     = {"symbol", "stock name", "name", "scrip"}
+    QUANTITY_ALIASES = {"quantity available", "quantity", "qty", "qty available", "available qty"}
+    PRICE_ALIASES    = {"average price", "avg price", "buy price", "price", "avg. price", "average cost"}
+    SECTOR_ALIASES   = {"sector"}
     header_row_index = None
     headers          = []
-
-    # Scan rows to find the header row
     for row_idx, row in enumerate(ws.iter_rows(values_only=True), start=1):
         row_values = [str(v).strip().lower() if v is not None else "" for v in row]
-        # Check if this row contains at least symbol/name AND sector
-        has_name   = any(v in NAME_ALIASES     for v in row_values)
-        has_sector = any(v in SECTOR_ALIASES   for v in row_values)
+        has_name   = any(v in NAME_ALIASES   for v in row_values)
+        has_sector = any(v in SECTOR_ALIASES for v in row_values)
         if has_name and has_sector:
             header_row_index = row_idx
             headers = [str(v).strip() if v is not None else "" for v in row]
             break
-
     if not header_row_index:
         return []
-
-    # Map column index to our internal field name
     col_map = {}
     for col_idx, header in enumerate(headers):
         h = header.lower()
@@ -215,8 +202,6 @@ def extract_rows_from_excel(file_bytes):
             col_map[col_idx] = "Average Price"
         elif h in SECTOR_ALIASES:
             col_map[col_idx] = "Sector"
-
-    # Read all data rows after the header
     rows = []
     for row in ws.iter_rows(min_row=header_row_index + 1, values_only=True):
         row_dict = {}
@@ -225,22 +210,15 @@ def extract_rows_from_excel(file_bytes):
                 row_dict[col_map[col_idx]] = str(value).strip() if value is not None else ""
         if any(v for v in row_dict.values()):
             rows.append(row_dict)
-
     return rows
 
 
 def extract_rows_from_csv(content):
-    """
-    Smartly reads a CSV — skips summary rows and finds the actual data table.
-    Works with both simple CSVs and Zerodha-style exports.
-    """
-    NAME_ALIASES      = {"symbol", "stock name", "name", "scrip"}
-    QUANTITY_ALIASES  = {"quantity available", "quantity", "qty", "qty available", "available qty"}
-    PRICE_ALIASES     = {"average price", "avg price", "buy price", "price", "avg. price", "average cost"}
-    SECTOR_ALIASES    = {"sector"}
-
+    NAME_ALIASES     = {"symbol", "stock name", "name", "scrip"}
+    QUANTITY_ALIASES = {"quantity available", "quantity", "qty", "qty available", "available qty"}
+    PRICE_ALIASES    = {"average price", "avg price", "buy price", "price", "avg. price", "average cost"}
+    SECTOR_ALIASES   = {"sector"}
     lines = content.splitlines()
-
     header_line_index = None
     for i, line in enumerate(lines):
         lower = line.lower()
@@ -249,19 +227,11 @@ def extract_rows_from_csv(content):
         if has_name and has_sector:
             header_line_index = i
             break
-
     if header_line_index is None:
         reader = csv.DictReader(io.StringIO(content))
         return list(reader)
-
     data_content = "\n".join(lines[header_line_index:])
     reader = csv.DictReader(io.StringIO(data_content))
-
-    NAME_ALIASES_LIST     = list(NAME_ALIASES)
-    QUANTITY_ALIASES_LIST = list(QUANTITY_ALIASES)
-    PRICE_ALIASES_LIST    = list(PRICE_ALIASES)
-    SECTOR_ALIASES_LIST   = list(SECTOR_ALIASES)
-
     rows = []
     for row in reader:
         normalised = {}
@@ -281,42 +251,15 @@ def extract_rows_from_csv(content):
 
 
 def parse_rows(rows, valid_sectors):
-    """
-    Validates and processes rows extracted from CSV or Excel.
-    Accepts both our template format and Zerodha format.
-    Returns (valid_rows, errors).
-    """
     added_rows = []
     errors     = []
-
     for i, row in enumerate(rows, start=2):
-        # Accept both our template names and Zerodha names
-        name = (
-            str(row.get("Stock Name",         "") or
-                row.get("stock_name",          "") or
-                row.get("Symbol",              "") or
-                row.get("Name",                "")).strip()
-        )
-        quantity = (
-            str(row.get("Quantity Available",  "") or
-                row.get("Quantity",            "") or
-                row.get("quantity",            "") or
-                row.get("Qty",                 "")).strip()
-        )
-        buy_price = (
-            str(row.get("Average Price",       "") or
-                row.get("Buy Price",           "") or
-                row.get("buy_price",           "") or
-                row.get("Price",               "")).strip()
-        )
-        sector = (
-            str(row.get("Sector",             "") or
-                row.get("sector",             "")).strip()
-        )
-
+        name = (str(row.get("Stock Name", "") or row.get("stock_name", "") or row.get("Symbol", "") or row.get("Name", "")).strip())
+        quantity = (str(row.get("Quantity Available", "") or row.get("Quantity", "") or row.get("quantity", "") or row.get("Qty", "")).strip())
+        buy_price = (str(row.get("Average Price", "") or row.get("Buy Price", "") or row.get("buy_price", "") or row.get("Price", "")).strip())
+        sector = (str(row.get("Sector", "") or row.get("sector", "")).strip())
         if not name and not quantity and not buy_price and not sector:
             continue
-
         if not name:
             errors.append(f"Row {i}: Missing stock name.")
             continue
@@ -329,15 +272,10 @@ def parse_rows(rows, valid_sectors):
         if not sector:
             errors.append(f"Row {i}: Missing sector for {name}.")
             continue
-
-        sector_match = next(
-            (s for s in valid_sectors if s.strip().lower() == sector.strip().lower()),
-            None
-        )
+        sector_match = next((s for s in valid_sectors if s.strip().lower() == sector.strip().lower()), None)
         if not sector_match:
-            errors.append(f"Row {i} ({name}): Sector '{sector}' not in your defined sectors. Valid: {', '.join(valid_sectors)}")
+            errors.append(f"Row {i} ({name}): Sector '{sector}' not found. Valid: {', '.join(valid_sectors)}")
             continue
-
         try:
             qty_val   = float(quantity)
             price_val = float(buy_price)
@@ -347,14 +285,7 @@ def parse_rows(rows, valid_sectors):
         except ValueError:
             errors.append(f"Row {i}: Quantity and price must be numbers for {name}.")
             continue
-
-        added_rows.append({
-            "name":      name,
-            "quantity":  qty_val,
-            "buy_price": price_val,
-            "sector":    sector_match,
-        })
-
+        added_rows.append({"name": name, "quantity": qty_val, "buy_price": price_val, "sector": sector_match})
     return added_rows, errors
 
 
@@ -363,42 +294,30 @@ def parse_rows(rows, valid_sectors):
 def upload_stocks(session_id):
     targets       = get_target_allocations(dbu(), dbt(), session_id)
     valid_sectors = [t["sector"] for t in targets]
-
     if "csv_file" not in request.files:
         flash("No file selected.", "danger")
         return redirect(url_for("main.add_stocks", session_id=session_id))
-
     file = request.files["csv_file"]
     if file.filename == "":
         flash("No file selected.", "danger")
         return redirect(url_for("main.add_stocks", session_id=session_id))
-
     filename = file.filename.lower()
-
     try:
         if filename.endswith(".xlsx") or filename.endswith(".xls"):
-            file_bytes = file.read()
-            rows = extract_rows_from_excel(file_bytes)
+            rows = extract_rows_from_excel(file.read())
         elif filename.endswith(".csv"):
-            content = file.read().decode("utf-8-sig")
-            rows = extract_rows_from_csv(content)
+            rows = extract_rows_from_csv(file.read().decode("utf-8-sig"))
         else:
             flash("Please upload a CSV or Excel (.xlsx) file.", "danger")
             return redirect(url_for("main.add_stocks", session_id=session_id))
-
         if not rows:
-            flash("Could not find any stock data in the file. Make sure it has Symbol/Name, Quantity, Price and Sector columns.", "danger")
+            flash("Could not find any stock data in the file.", "danger")
             return redirect(url_for("main.add_stocks", session_id=session_id))
-
         valid_rows, errors = parse_rows(rows, valid_sectors)
-
         added = 0
         for r in valid_rows:
-            add_stock(dbu(), dbt(), session_id,
-                      name=r["name"], quantity=r["quantity"],
-                      buy_price=r["buy_price"], sector=r["sector"])
+            add_stock(dbu(), dbt(), session_id, name=r["name"], quantity=r["quantity"], buy_price=r["buy_price"], sector=r["sector"])
             added += 1
-
         if added > 0:
             flash(f"Successfully imported {added} stock(s)!", "success")
         if errors:
@@ -408,10 +327,8 @@ def upload_stocks(session_id):
                 flash(f"...and {len(errors) - 5} more errors.", "warning")
         if added == 0 and not errors:
             flash("No valid stocks found in the file.", "danger")
-
     except Exception as e:
         flash(f"Error reading file: {str(e)}", "danger")
-
     return redirect(url_for("main.add_stocks", session_id=session_id))
 
 
@@ -426,12 +343,7 @@ def download_template():
     writer.writerow(["Sun Pharma", "75", "1100.00", "Pharma"])
     writer.writerow(["Reliance", "30", "2800.00", "Energy"])
     output.seek(0)
-    return send_file(
-        io.BytesIO(output.getvalue().encode()),
-        mimetype="text/csv",
-        as_attachment=True,
-        download_name="portfolio_template.csv"
-    )
+    return send_file(io.BytesIO(output.getvalue().encode()), mimetype="text/csv", as_attachment=True, download_name="portfolio_template.csv")
 
 
 @main.route("/session/<int:session_id>/stocks/<int:stock_id>/delete", methods=["POST"])
@@ -464,9 +376,7 @@ def results(session_id):
     if not analysis:
         flash("No results found. Please run the analysis first.", "danger")
         return redirect(url_for("main.add_stocks", session_id=session_id))
-    total_value = sum(
-        float(s["quantity"]) * float(s["buy_price"]) for s in stocks if s["buy_price"]
-    )
+    total_value = sum(float(s["quantity"]) * float(s["buy_price"]) for s in stocks if s["buy_price"])
     for row in analysis:
         row["actual_value"] = round((row["actual_pct"] / 100) * total_value, 2)
         row["target_value"] = round((row["target_pct"] / 100) * total_value, 2)
@@ -480,12 +390,7 @@ def results(session_id):
         else:
             row["action"]        = "Hold"
             row["action_amount"] = 0
-    return render_template("results.html",
-                           session_id=session_id,
-                           analysis=analysis,
-                           stocks=stocks,
-                           sess=sess,
-                           total_value=total_value)
+    return render_template("results.html", session_id=session_id, analysis=analysis, stocks=stocks, sess=sess, total_value=total_value)
 
 
 @main.route("/history")
