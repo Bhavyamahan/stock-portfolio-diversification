@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}My Profile · Stock Portfolio Diversification{% endblock %}
+{% block content %}
+
+<div class="profile-header card">
+  <div class="profile-header-inner">
+    <div class="profile-photo-wrapper">
+      {% if user.profile_photo %}
+        <img src="{{ user.profile_photo }}" class="profile-photo" alt="{{ user.name }}" />
+      {% else %}
+        <div class="profile-initials">{{ user.name[0].upper() }}</div>
+      {% endif %}
+      <label for="photo-upload" class="photo-change-btn" title="Change photo">✏️</label>
+    </div>
+    <div class="profile-info">
+      <h2>{{ user.name }}</h2>
+      <p class="profile-email">{{ user.email }}</p>
+      <p class="profile-joined">Member since {{ user.created_at | string | truncate(10, True, '') }}</p>
+    </div>
+  </div>
+</div>
+
+<!-- Edit profile form -->
+<div class="card" style="margin-top: 24px;">
+  <h3>Edit profile</h3>
+  <form action="/profile" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="action" value="update_profile" />
+    <div class="profile-form-grid">
+      <div class="field">
+        <label for="name">Full name</label>
+        <input type="text" id="name" name="name" value="{{ user.name }}" required />
+      </div>
+      <div class="field">
+        <label for="photo-upload">Profile photo (max 2MB)</label>
+        <input type="file" id="photo-upload" name="photo" accept="image/*" class="file-input" />
+        <label for="photo-upload" class="btn btn--secondary btn--sm" style="width: fit-content; margin-top: 6px;">Choose photo</label>
+        <span id="photo-name" style="font-size:12px; color: var(--clr-muted); margin-top:4px;"></span>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Save changes</button>
+    </div>
+  </form>
+</div>
+
+<!-- Past sessions -->
+<div class="card" style="margin-top: 24px;">
+  <h3>My analysis sessions ({{ sessions | length }})</h3>
+  {% if sessions %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Session name</th>
+        <th>Date</th>
+        <th>Sectors</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in sessions %}
+      <tr>
+        <td>
+          <strong>{{ item.session.label or "Unnamed session" }}</strong>
+        </td>
+        <td>{{ item.session.created_at | string | truncate(16, True, '') }}</td>
+        <td>
+          {% if item.has_results %}
+            <span class="badge badge--success">{{ item.sector_count }} sectors</span>
+          {% else %}
+            <span class="badge badge--warning">No results yet</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            {% if item.has_results %}
+              <a href="/session/{{ item.session.id }}/results" class="btn btn--secondary btn--sm">View results</a>
+            {% endif %}
+            <a href="/session/{{ item.session.id }}/stocks" class="btn btn--secondary btn--sm">Edit stocks</a>
+
+            <!-- Rename form -->
+            <form action="/session/{{ item.session.id }}/rename" method="POST" style="display:inline-flex; gap:6px; align-items:center;">
+              <input type="text" name="label" placeholder="Rename..." value="{{ item.session.label or '' }}" style="width:130px; padding:6px 10px; font-size:13px;" />
+              <button type="submit" class="btn btn--secondary btn--sm">Rename</button>
+            </form>
+
+            <!-- Delete form -->
+            <form action="/session/{{ item.session.id }}/delete" method="POST" style="display:inline;">
+              <button type="submit" class="btn-remove-sm" onclick="return confirm('Delete this session and all its data?')">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="hint">No sessions yet. <a href="/new-session">Start your first analysis →</a></p>
+  {% endif %}
+  <div class="form-actions" style="margin-top: 20px;">
+    <a href="/new-session" class="btn btn--primary">+ New analysis</a>
+  </div>
+</div>
+
+<!-- Delete account -->
+<div class="card danger-zone" style="margin-top: 24px;">
+  <h3>Danger zone</h3>
+  <p class="hint">Deleting your account is permanent. All your sessions, stocks, and analysis data will be deleted immediately and cannot be recovered.</p>
+  <details>
+    <summary class="danger-summary">Delete my account permanently</summary>
+    <form action="/profile" method="POST" style="margin-top: 16px;">
+      <input type="hidden" name="action" value="delete_account" />
+      <div class="field" style="max-width: 300px; margin-bottom: 16px;">
+        <label for="confirm_delete">Type <strong>delete</strong> to confirm</label>
+        <input type="text" id="confirm_delete" name="confirm_delete" placeholder="delete" />
+      </div>
+      <button type="submit" class="btn btn--danger" onclick="return confirm('This will permanently delete your account and all data. Are you sure?')">
+        Delete my account
+      </button>
+    </form>
+  </details>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("photo-upload").addEventListener("change", function() {
+  var label = document.getElementById("photo-name");
+  label.textContent = this.files[0] ? this.files[0].name : "";
+});
+</script>
+{% endblock %}
