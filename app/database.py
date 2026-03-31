@@ -39,6 +39,7 @@ def init_db(db_url, db_type="sqlite"):
                 name TEXT NOT NULL,
                 email TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
+                profile_photo TEXT,
                 created_at TIMESTAMP NOT NULL DEFAULT NOW())""")
             cur.execute("""CREATE TABLE IF NOT EXISTS sessions (
                 id SERIAL PRIMARY KEY,
@@ -73,6 +74,7 @@ def init_db(db_url, db_type="sqlite"):
                 name TEXT NOT NULL,
                 email TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
+                profile_photo TEXT,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')))""")
             cur.execute("""CREATE TABLE IF NOT EXISTS sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,6 +150,33 @@ def get_user_by_id(db_url, db_type, user_id):
     finally:
         conn.close()
 
+def update_user_profile(db_url, db_type, user_id, name, profile_photo=None):
+    conn, db_type = get_connection(db_url, db_type)
+    try:
+        cur = conn.cursor()
+        p = ph(db_type)
+        if profile_photo:
+            cur.execute(
+                f"UPDATE users SET name = {p}, profile_photo = {p} WHERE id = {p}",
+                (name, profile_photo, user_id))
+        else:
+            cur.execute(
+                f"UPDATE users SET name = {p} WHERE id = {p}",
+                (name, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+def delete_user(db_url, db_type, user_id):
+    conn, db_type = get_connection(db_url, db_type)
+    try:
+        cur = conn.cursor()
+        p = ph(db_type)
+        cur.execute(f"DELETE FROM users WHERE id = {p}", (user_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
 def create_session(db_url, db_type, user_id, label=None):
     conn, db_type = get_connection(db_url, db_type)
     try:
@@ -199,6 +228,26 @@ def get_sessions_by_user(db_url, db_type, user_id):
             (user_id,))
         rows = cur.fetchall()
         return dict_rows(cur, rows, db_type)
+    finally:
+        conn.close()
+
+def rename_session(db_url, db_type, session_id, label):
+    conn, db_type = get_connection(db_url, db_type)
+    try:
+        cur = conn.cursor()
+        p = ph(db_type)
+        cur.execute(f"UPDATE sessions SET label = {p} WHERE id = {p}", (label, session_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+def delete_session(db_url, db_type, session_id):
+    conn, db_type = get_connection(db_url, db_type)
+    try:
+        cur = conn.cursor()
+        p = ph(db_type)
+        cur.execute(f"DELETE FROM sessions WHERE id = {p}", (session_id,))
+        conn.commit()
     finally:
         conn.close()
 
