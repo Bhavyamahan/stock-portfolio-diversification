@@ -406,7 +406,7 @@ def results(session_id):
         else:
             row["action"]        = "Hold"
             row["action_amount"] = 0
-    is_guest = session.get("is_guest", False)
+    is_guest = session.get("is_guest", False) and not session.get("user_id")
     return render_template("results.html", session_id=session_id, analysis=analysis,
                            stocks=stocks, sess=sess, total_value=total_value, is_guest=is_guest)
 
