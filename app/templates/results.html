@@ -114,51 +114,6 @@
   </div>
 </div>
 
-{% if rebalancing %}
-<div class="card" style="margin-top: 24px;">
-  <h3>Smart rebalancing — exact shares to buy/sell</h3>
-  <p class="hint">Based on live market prices fetched from Yahoo Finance.</p>
-  {% for item in rebalancing %}
-  <div class="rebalance-sector-block">
-    <div class="rebalance-sector-title">
-      {{ item.sector }}
-      {% if item.action == "Reduce" %}
-        <span class="action-badge action-badge--sell">Reduce exposure</span>
-      {% else %}
-        <span class="action-badge action-badge--buy">Increase exposure</span>
-      {% endif %}
-    </div>
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Stock</th>
-          <th>Live price</th>
-          <th>Amount to {{ item.action | lower }}</th>
-          <th>Shares to {{ item.action | lower }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in item.suggestions %}
-        <tr>
-          <td><strong>{{ s.stock }}</strong></td>
-          <td>Rs.{{ "{:,.2f}".format(s.current_price) }}</td>
-          <td>Rs.{{ "{:,.0f}".format(s.amount) }}</td>
-          <td>
-            {% if item.action == "Reduce" %}
-              <span class="action-badge action-badge--sell">Sell {{ s.shares }} shares</span>
-            {% else %}
-              <span class="action-badge action-badge--buy">Buy {{ s.shares }} shares</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
-
 <div class="card" style="margin-top: 24px;">
   <h3>Plain English summary</h3>
   <ul class="summary-list">
@@ -235,6 +190,8 @@
   <a href="/new-session" class="btn btn--secondary">Start new analysis</a>
 </div>
 {% endif %}
+
+{% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
