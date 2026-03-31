@@ -12,7 +12,14 @@
       <a href="/" class="logo">Stock Portfolio Diversification</a>
       <nav>
         {% if session.get('user_id') %}
-          <span class="nav-username">Hi, {{ session.get('username') }}</span>
+          <a href="/profile" class="nav-profile-link">
+            {% if session.get('profile_photo') %}
+              <img src="{{ session.get('profile_photo') }}" class="nav-profile-photo" alt="Profile" />
+            {% else %}
+              <div class="nav-profile-initials">{{ session.get('username', 'U')[0].upper() }}</div>
+            {% endif %}
+            <span class="nav-username">{{ session.get('username') }}</span>
+          </a>
           <a href="/">Home</a>
           <a href="/history">My Sessions</a>
           <a href="/about">About</a>
