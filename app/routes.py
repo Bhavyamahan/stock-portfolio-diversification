@@ -1,13 +1,17 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from .database import (create_session, get_session, get_sessions_by_user,
     save_target_allocations, get_target_allocations,
     add_stock, get_stocks, delete_stock,
     save_analysis_results, get_analysis_results,
-    create_user, get_user_by_email, get_user_by_id)
+    create_user, get_user_by_email, get_user_by_id,
+    update_user_profile, delete_user,
+    rename_session, delete_session)
 from .analysis import run_analysis
 import csv
 import io
+import base64
 
 main = Blueprint("main", __name__)
 
@@ -72,8 +76,10 @@ def login():
         if not user or not check_password_hash(user["password_hash"], password):
             flash("Invalid email or password. Please try again.", "danger")
             return render_template("login.html")
-        session["user_id"]  = user["id"]
-        session["username"] = user["name"]
+        session["user_id"]       = user["id"]
+        session["username"]      = user["name"]
+        session["profile_photo"] = user.get("profile_photo", "")
+        session.pop("is_guest", None)
         flash(f"Welcome back, {user['name']}!", "success")
         return redirect(url_for("main.index"))
     return render_template("login.html")
@@ -84,13 +90,81 @@ def logout():
     flash("You have been logged out.", "success")
     return redirect(url_for("main.login"))
 
+@main.route("/profile", methods=["GET", "POST"])
+@login_required
+def profile():
+    user = get_user_by_id(dbu(), dbt(), session["user_id"])
+    if request.method == "POST":
+        action = request.form.get("action")
+
+        if action == "update_profile":
+            name = request.form.get("name", "").strip()
+            if not name:
+                flash("Name cannot be empty.", "danger")
+                return redirect(url_for("main.profile"))
+            photo_data = None
+            if "photo" in request.files:
+                photo_file = request.files["photo"]
+                if photo_file and photo_file.filename:
+                    allowed = {"jpg", "jpeg", "png", "gif", "webp"}
+                    ext = photo_file.filename.rsplit(".", 1)[-1].lower()
+                    if ext in allowed:
+                        file_bytes = photo_file.read()
+                        if len(file_bytes) < 2 * 1024 * 1024:
+                            encoded = base64.b64encode(file_bytes).decode("utf-8")
+                            photo_data = f"data:image/{ext};base64,{encoded}"
+                        else:
+                            flash("Photo must be under 2MB.", "warning")
+                    else:
+                        flash("Only JPG, PNG, GIF, WEBP files allowed.", "warning")
+            update_user_profile(dbu(), dbt(), session["user_id"], name, photo_data)
+            session["username"] = name
+            if photo_data:
+                session["profile_photo"] = photo_data
+            flash("Profile updated successfully!", "success")
+            return redirect(url_for("main.profile"))
+
+        elif action == "delete_account":
+            confirm = request.form.get("confirm_delete", "")
+            if confirm.lower() != "delete":
+                flash("Please type 'delete' to confirm account deletion.", "danger")
+                return redirect(url_for("main.profile"))
+            delete_user(dbu(), dbt(), session["user_id"])
+            session.clear()
+            flash("Your account has been deleted.", "success")
+            return redirect(url_for("main.index"))
+
+    sessions = get_sessions_by_user(dbu(), dbt(), session["user_id"])
+    sessions_with_results = []
+    for s in sessions:
+        results = get_analysis_results(dbu(), dbt(), s["id"])
+        sessions_with_results.append({
+            "session": s,
+            "has_results": len(results) > 0,
+            "sector_count": len(results),
+        })
+    return render_template("profile.html", user=user, sessions=sessions_with_results)
+
+@main.route("/session/<int:session_id>/rename", methods=["POST"])
+@login_required
+def rename_session_route(session_id):
+    label = request.form.get("label", "").strip()
+    if not label:
+        flash("Please enter a name for this session.", "danger")
+        return redirect(url_for("main.profile"))
+    rename_session(dbu(), dbt(), session_id, label)
+    flash("Session renamed successfully!", "success")
+    return redirect(url_for("main.profile"))
+
+@main.route("/session/<int:session_id>/delete", methods=["POST"])
+@login_required
+def delete_session_route(session_id):
+    delete_session(dbu(), dbt(), session_id)
+    flash("Session deleted.", "warning")
+    return redirect(url_for("main.profile"))
+
 @main.route("/guest-session")
 def guest_session():
-    """
-    Creates a temporary guest session — no account needed.
-    Guest sessions are not saved to any user account.
-    The data disappears when the browser session ends.
-    """
     sid = create_session(dbu(), dbt(), user_id=None, label="Guest")
     session["session_id"] = sid
     session["username"]   = "Guest"
